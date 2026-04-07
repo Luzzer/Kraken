@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/opencode-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT OpenCode Zen provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

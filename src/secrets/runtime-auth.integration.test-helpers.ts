@@ -1,0 +1,130 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+import { expect, vi } from "vitest";
+import { ensureAuthProfileStore, type AuthProfileStore } from "../agents/auth-profiles.js";
+import type { UAGENTConfig } from "../config/config.js";
+import { clearConfigCache, clearRuntimeConfigSnapshot, loadConfig } from "../config/config.js";
+import { captureEnv } from "../test-utils/env.js";
+import { clearSecretsRuntimeSnapshot } from "./runtime.js";
+
+export const OPENAI_ENV_KEY_REF = {
+  source: "env",
+  provider: "default",
+  id: "OPENAI_API_KEY",
+} as const;
+
+export const OPENAI_FILE_KEY_REF = {
+  source: "file",
+  provider: "default",
+  id: "/providers/openai/apiKey",
+} as const;
+
+export const EMPTY_LOADABLE_PLUGIN_ORIGINS = new Map();
+export type SecretsRuntimeEnvSnapshot = ReturnType<typeof captureEnv>;
+
+const allowInsecureTempSecretFile = process.platform === "win32";
+
+export function asConfig(value: unknown): UAGENTConfig {
+  return value as UAGENTConfig;
+}
+
+export function loadAuthStoreWithProfiles(
+  profiles: AuthProfileStore["profiles"],
+): AuthProfileStore {
+  return {
+    version: 1,
+    profiles,
+  };
+}
+
+export async function createOpenAIFileRuntimeFixture(home: string) {
+  const configDir = path.join(home, ".uagent");
+  const secretFile = path.join(configDir, "secrets.json");
+  const agentDir = path.join(configDir, "agents", "main", "agent");
+  const authStorePath = path.join(agentDir, "auth-profiles.json");
+
+  await fs.mkdir(agentDir, { recursive: true });
+  await fs.chmod(configDir, 0o700).catch(() => {});
+  await fs.writeFile(
+    secretFile,
+    `${JSON.stringify({ providers: { openai: { apiKey: "sk-file-runtime" } } }, null, 2)}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+  await fs.writeFile(
+    authStorePath,
+    `${JSON.stringify(
+      {
+        version: 1,
+        profiles: {
+          "openai:default": {
+            type: "api_key",
+            provider: "openai",
+            keyRef: OPENAI_FILE_KEY_REF,
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    { encoding: "utf8", mode: 0o600 },
+  );
+
+  return {
+    configDir,
+    secretFile,
+    agentDir,
+  };
+}
+
+export function createOpenAIFileRuntimeConfig(secretFile: string): UAGENTConfig {
+  return asConfig({
+    secrets: {
+      providers: {
+        default: {
+          source: "file",
+          path: secretFile,
+          mode: "json",
+          ...(allowInsecureTempSecretFile ? { allowInsecurePath: true } : {}),
+        },
+      },
+    },
+    models: {
+      providers: {
+        openai: {
+          baseUrl: "https://api.openai.com/v1",
+          apiKey: OPENAI_FILE_KEY_REF,
+          models: [],
+        },
+      },
+    },
+  });
+}
+
+export function expectResolvedOpenAIRuntime(agentDir: string) {
+  expect(loadConfig().models?.providers?.openai?.apiKey).toBe("sk-file-runtime");
+  expect(ensureAuthProfileStore(agentDir).profiles["openai:default"]).toMatchObject({
+    type: "api_key",
+    key: "sk-file-runtime",
+  });
+}
+
+export function beginSecretsRuntimeIsolationForTest(): SecretsRuntimeEnvSnapshot {
+  const envSnapshot = captureEnv([
+    "UAGENT_BUNDLED_PLUGINS_DIR",
+    "UAGENT_DISABLE_BUNDLED_PLUGINS",
+    "UAGENT_DISABLE_PLUGIN_DISCOVERY_CACHE",
+    "UAGENT_VERSION",
+  ]);
+  delete process.env.UAGENT_BUNDLED_PLUGINS_DIR;
+  process.env.UAGENT_DISABLE_PLUGIN_DISCOVERY_CACHE = "1";
+  delete process.env.UAGENT_VERSION;
+  return envSnapshot;
+}
+
+export function endSecretsRuntimeIsolationForTest(envSnapshot: SecretsRuntimeEnvSnapshot) {
+  vi.restoreAllMocks();
+  envSnapshot.restore();
+  clearSecretsRuntimeSnapshot();
+  clearRuntimeConfigSnapshot();
+  clearConfigCache();
+}

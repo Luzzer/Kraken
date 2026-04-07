@@ -1,0 +1,7 @@
+{
+  "name": "@uagent/video-generation-core",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT video generation runtime package",
+  "type": "module"
+}

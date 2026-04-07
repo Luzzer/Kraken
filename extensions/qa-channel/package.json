@@ -1,0 +1,45 @@
+{
+  "name": "@uagent/qa-channel",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT QA synthetic channel plugin",
+  "type": "module",
+  "devDependencies": {
+    "uagent": "workspace:*"
+  },
+  "peerDependencies": {
+    "uagent": ">=2026.4.6"
+  },
+  "peerDependenciesMeta": {
+    "uagent": {
+      "optional": true
+    }
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "channel": {
+      "id": "qa-channel",
+      "label": "QA Channel",
+      "selectionLabel": "QA Channel (Synthetic)",
+      "detailLabel": "QA Channel",
+      "docsPath": "/channels/qa-channel",
+      "docsLabel": "qa-channel",
+      "blurb": "Synthetic Slack-class transport for automated UAGENT QA scenarios.",
+      "systemImage": "checklist",
+      "order": 999,
+      "exposure": {
+        "configured": false,
+        "setup": false,
+        "docs": false
+      }
+    },
+    "install": {
+      "npmSpec": "@uagent/qa-channel",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.6"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/tavily-plugin",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Tavily plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

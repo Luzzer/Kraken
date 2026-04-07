@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/firecrawl-plugin",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Firecrawl plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

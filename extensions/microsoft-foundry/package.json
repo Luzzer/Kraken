@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/microsoft-foundry",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Microsoft Foundry provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

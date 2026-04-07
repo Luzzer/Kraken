@@ -1,0 +1,7 @@
+<resources>
+    <string-array name="ask_uagent_query_patterns">
+        <item>ask UAGENT $prompt</item>
+        <item>tell UAGENT to $prompt</item>
+        <item>open UAGENT and ask $prompt</item>
+    </string-array>
+</resources>

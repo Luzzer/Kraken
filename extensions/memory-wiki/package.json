@@ -1,0 +1,26 @@
+{
+  "name": "@uagent/memory-wiki",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT persistent wiki plugin",
+  "type": "module",
+  "dependencies": {
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "uagent": "workspace:*"
+  },
+  "peerDependencies": {
+    "uagent": ">=2026.4.6"
+  },
+  "peerDependenciesMeta": {
+    "uagent": {
+      "optional": true
+    }
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

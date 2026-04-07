@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/arcee-provider",
+  "version": "2026.4.4",
+  "private": true,
+  "description": "UAGENT Arcee provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

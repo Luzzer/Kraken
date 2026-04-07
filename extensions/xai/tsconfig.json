@@ -1,0 +1,23 @@
+{
+  "extends": "../tsconfig.package-boundary.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "paths": {
+      "uagent/extension-api": ["../../src/extensionAPI.ts"],
+      "uagent/plugin-sdk": ["../../packages/plugin-sdk/dist/src/plugin-sdk/index.d.ts"],
+      "uagent/plugin-sdk/*": [
+        "../../packages/plugin-sdk/dist/src/plugin-sdk/*.d.ts",
+        "../../packages/plugin-sdk/dist/packages/plugin-sdk/src/*.d.ts"
+      ],
+      "uagent/plugin-sdk/account-id": ["../../src/plugin-sdk/account-id.ts"],
+      "@uagent/*": ["../*"],
+      "@uagent/plugin-sdk/*": ["../../packages/plugin-sdk/dist/packages/plugin-sdk/src/*.d.ts"],
+      "@uagent/anthropic-vertex/api.js": ["./.boundary-stubs/anthropic-vertex-api.d.ts"],
+      "@uagent/ollama/api.js": ["./.boundary-stubs/ollama-api.d.ts"],
+      "@uagent/ollama/runtime-api.js": ["./.boundary-stubs/ollama-runtime-api.d.ts"],
+      "@uagent/speech-core/runtime-api.js": ["./.boundary-stubs/speech-core-runtime-api.d.ts"]
+    }
+  },
+  "include": ["./*.ts", "./src/**/*.ts"],
+  "exclude": ["./**/*.test.ts", "./dist/**", "./node_modules/**"]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@uagent/image-generation-core",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT image generation runtime package",
+  "type": "module"
+}

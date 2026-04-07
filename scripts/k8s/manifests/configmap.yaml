@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: uagent-config
+  labels:
+    app: uagent
+data:
+  uagent.json: |
+    {
+      "gateway": {
+        "mode": "local",
+        "bind": "loopback",
+        "port": 18789,
+        "auth": {
+          "mode": "token"
+        },
+        "controlUi": {
+          "enabled": true
+        }
+      },
+      "agents": {
+        "defaults": {
+          "workspace": "~/.uagent/workspace"
+        },
+        "list": [
+          {
+            "id": "default",
+            "name": "UAGENT Assistant",
+            "workspace": "~/.uagent/workspace"
+          }
+        ]
+      },
+      "cron": { "enabled": false }
+    }
+  AGENTS.md: |
+    # UAGENT Assistant
+
+    You are a helpful AI assistant running in Kubernetes.

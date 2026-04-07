@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/zai-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Z.AI provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

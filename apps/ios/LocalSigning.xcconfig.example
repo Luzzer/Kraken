@@ -1,0 +1,17 @@
+// Copy to LocalSigning.xcconfig for personal local signing overrides.
+// This file is only an example and should stay committed.
+
+UAGENT_CODE_SIGN_STYLE = Automatic
+UAGENT_DEVELOPMENT_TEAM = YOUR_TEAM_ID
+
+UAGENT_APP_BUNDLE_ID = ai.uagent.client
+UAGENT_SHARE_BUNDLE_ID = ai.uagent.client.share
+UAGENT_ACTIVITY_WIDGET_BUNDLE_ID = ai.uagent.client.activitywidget
+UAGENT_WATCH_APP_BUNDLE_ID = ai.uagent.client.watchkitapp
+UAGENT_WATCH_EXTENSION_BUNDLE_ID = ai.uagent.client.watchkitapp.extension
+
+// Leave empty with automatic signing.
+UAGENT_APP_PROFILE =
+UAGENT_SHARE_PROFILE =
+UAGENT_WATCH_APP_PROFILE =
+UAGENT_WATCH_EXTENSION_PROFILE =

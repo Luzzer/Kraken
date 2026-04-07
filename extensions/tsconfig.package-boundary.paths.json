@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "uagent/extension-api": ["../src/extensionAPI.ts"],
+      "uagent/plugin-sdk": ["../packages/plugin-sdk/dist/src/plugin-sdk/index.d.ts"],
+      "uagent/plugin-sdk/*": ["../packages/plugin-sdk/dist/src/plugin-sdk/*.d.ts"],
+      "uagent/plugin-sdk/account-id": ["../src/plugin-sdk/account-id.ts"],
+      "@uagent/*": ["../packages/plugin-sdk/dist/extensions/*", "../extensions/*"],
+      "@uagent/plugin-sdk/*": ["../packages/plugin-sdk/dist/src/plugin-sdk/*.d.ts"]
+    }
+  }
+}

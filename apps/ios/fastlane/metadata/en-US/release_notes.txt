@@ -1,0 +1,1 @@
+First App Store release of UAGENT for iPhone. Pair with your UAGENT Gateway to use chat, voice, sharing, and device actions from iOS.

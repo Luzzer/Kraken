@@ -1,0 +1,15 @@
+{
+  "name": "@uagent/xai-plugin",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT xAI plugin",
+  "type": "module",
+  "devDependencies": {
+    "@uagent/plugin-sdk": "workspace:*"
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

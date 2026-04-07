@@ -1,0 +1,353 @@
+name: UAGENT
+options:
+  bundleIdPrefix: ai.uagent
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+
+packages:
+  UAGENTKit:
+    path: ../shared/UAGENTKit
+  Swabble:
+    path: ../../Swabble
+
+schemes:
+  UAGENT:
+    shared: true
+    build:
+      targets:
+        UAGENT: all
+    test:
+      targets:
+        - UAGENTTests
+        - UAGENTLogicTests
+  UAGENTLogicTests:
+    shared: true
+    build:
+      targets:
+        UAGENTLogicTests: all
+    test:
+      targets:
+        - UAGENTLogicTests
+
+targets:
+  UAGENT:
+    type: application
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: Sources
+    dependencies:
+      - target: UAGENTShareExtension
+        embed: true
+      - target: UAGENTActivityWidget
+        embed: true
+      - target: UAGENTWatchApp
+      - package: UAGENTKit
+      - package: UAGENTKit
+        product: UAGENTChatUI
+      - package: UAGENTKit
+        product: UAGENTProtocol
+      - package: Swabble
+        product: SwabbleKit
+      - sdk: AppIntents.framework
+    preBuildScripts:
+      - name: SwiftFormat (lint)
+        basedOnDependencyAnalysis: false
+        inputFileLists:
+          - $(SRCROOT)/SwiftSources.input.xcfilelist
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if ! command -v swiftformat >/dev/null 2>&1; then
+            echo "error: swiftformat not found (brew install swiftformat)" >&2
+            exit 1
+          fi
+          swiftformat --lint --config "$SRCROOT/../../.swiftformat" \
+            --filelist "$SRCROOT/SwiftSources.input.xcfilelist"
+      - name: SwiftLint
+        basedOnDependencyAnalysis: false
+        inputFileLists:
+          - $(SRCROOT)/SwiftSources.input.xcfilelist
+        script: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          if ! command -v swiftlint >/dev/null 2>&1; then
+            echo "error: swiftlint not found (brew install swiftlint)" >&2
+            exit 1
+          fi
+          swiftlint lint --config "$SRCROOT/.swiftlint.yml" --use-script-input-file-lists
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_ENTITLEMENTS: Sources/UAGENT.entitlements
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(UAGENT_APP_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(UAGENT_APP_PROFILE)"
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SUPPORTS_LIVE_ACTIVITIES: YES
+        ENABLE_APPINTENTS_METADATA: NO
+        ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+      configs:
+        Debug:
+          UAGENT_PUSH_TRANSPORT: direct
+          UAGENT_PUSH_DISTRIBUTION: local
+          UAGENT_PUSH_RELAY_BASE_URL: ""
+          UAGENT_PUSH_APNS_ENVIRONMENT: sandbox
+        Release:
+          UAGENT_PUSH_TRANSPORT: direct
+          UAGENT_PUSH_DISTRIBUTION: local
+          UAGENT_PUSH_RELAY_BASE_URL: ""
+          UAGENT_PUSH_APNS_ENVIRONMENT: production
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENT
+        CFBundleIconName: AppIcon
+        CFBundleURLTypes:
+          - CFBundleURLName: ai.uagent.ios
+            CFBundleURLSchemes:
+              - uagent
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIBackgroundModes:
+          - audio
+          - remote-notification
+        BGTaskSchedulerPermittedIdentifiers:
+          - ai.uagent.ios.bgrefresh
+        NSLocalNetworkUsageDescription: UAGENT discovers and connects to your UAGENT gateway on the local network.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
+        NSBonjourServices:
+          - _uagent-gw._tcp
+        NSCameraUsageDescription: UAGENT can capture photos or short video clips when requested via the gateway.
+        NSLocationWhenInUseUsageDescription: UAGENT uses your location when you allow location sharing.
+        NSLocationAlwaysAndWhenInUseUsageDescription: UAGENT can share your location in the background when you enable Always.
+        NSMicrophoneUsageDescription: UAGENT needs microphone access for voice wake.
+        NSMotionUsageDescription: UAGENT may use motion data to support device-aware interactions and automations.
+        NSPhotoLibraryUsageDescription: UAGENT needs photo library access when you choose existing photos to share with your assistant.
+        NSSpeechRecognitionUsageDescription: UAGENT uses on-device speech recognition for voice wake.
+        NSSupportsLiveActivities: true
+        ITSAppUsesNonExemptEncryption: false
+        UAGENTPushTransport: "$(UAGENT_PUSH_TRANSPORT)"
+        UAGENTPushDistribution: "$(UAGENT_PUSH_DISTRIBUTION)"
+        UAGENTPushRelayBaseURL: "$(UAGENT_PUSH_RELAY_BASE_URL)"
+        UAGENTPushAPNsEnvironment: "$(UAGENT_PUSH_APNS_ENVIRONMENT)"
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+
+  UAGENTShareExtension:
+    type: app-extension
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: ShareExtension
+    dependencies:
+      - package: UAGENTKit
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        ENABLE_APPINTENTS_METADATA: NO
+        ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+        PRODUCT_BUNDLE_IDENTIFIER: "$(UAGENT_SHARE_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(UAGENT_SHARE_PROFILE)"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENT Share
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: "$(PRODUCT_MODULE_NAME).ShareViewController"
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsText: true
+              NSExtensionActivationSupportsWebURLWithMaxCount: 1
+              NSExtensionActivationSupportsImageWithMaxCount: 10
+              NSExtensionActivationSupportsMovieWithMaxCount: 1
+
+  UAGENTActivityWidget:
+    type: app-extension
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: ActivityWidget
+      - path: Sources/LiveActivity/UAGENTActivityAttributes.swift
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: ActivityKit.framework
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(UAGENT_ACTIVITY_WIDGET_BUNDLE_ID)"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        SUPPORTS_LIVE_ACTIVITIES: YES
+    info:
+      path: ActivityWidget/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENT Activity
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+        NSSupportsLiveActivities: true
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  UAGENTWatchApp:
+    type: application.watchapp2
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: WatchApp
+    dependencies:
+      - target: UAGENTWatchExtension
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    attributes:
+      DevelopmentTeam: "$(UAGENT_DEVELOPMENT_TEAM)"
+      ProvisioningStyle: "$(UAGENT_CODE_SIGN_STYLE)"
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        ENABLE_APPINTENTS_METADATA: NO
+        ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+        PRODUCT_BUNDLE_IDENTIFIER: "$(UAGENT_WATCH_APP_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(UAGENT_WATCH_APP_PROFILE)"
+    info:
+      path: WatchApp/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENT
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+        WKCompanionAppBundleIdentifier: "$(UAGENT_APP_BUNDLE_ID)"
+        WKWatchKitApp: true
+
+  UAGENTWatchExtension:
+    type: watchkit2-extension
+    platform: watchOS
+    deploymentTarget: "11.0"
+    sources:
+      - path: WatchExtension/Sources
+    dependencies:
+      - sdk: AppIntents.framework
+      - sdk: WatchConnectivity.framework
+      - sdk: UserNotifications.framework
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    attributes:
+      DevelopmentTeam: "$(UAGENT_DEVELOPMENT_TEAM)"
+      ProvisioningStyle: "$(UAGENT_CODE_SIGN_STYLE)"
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: "$(UAGENT_WATCH_EXTENSION_BUNDLE_ID)"
+        PROVISIONING_PROFILE_SPECIFIER: "$(UAGENT_WATCH_EXTENSION_PROFILE)"
+    info:
+      path: WatchExtension/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENT
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+        NSExtension:
+          NSExtensionAttributes:
+            WKAppBundleIdentifier: "$(UAGENT_WATCH_APP_BUNDLE_ID)"
+          NSExtensionPointIdentifier: com.apple.watchkit
+
+  UAGENTTests:
+    type: bundle.unit-test
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: Tests
+        excludes:
+          - Logic
+    dependencies:
+      - target: UAGENT
+      - package: Swabble
+        product: SwabbleKit
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uagent.ios.tests
+        ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/UAGENT.app/UAGENT"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    info:
+      path: Tests/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENTTests
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"
+
+  UAGENTLogicTests:
+    type: bundle.unit-test
+    platform: iOS
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    sources:
+      - path: Tests/Logic
+    dependencies:
+      - package: UAGENTKit
+    settings:
+      base:
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: "$(UAGENT_CODE_SIGN_STYLE)"
+        DEVELOPMENT_TEAM: "$(UAGENT_DEVELOPMENT_TEAM)"
+        PRODUCT_BUNDLE_IDENTIFIER: ai.uagent.ios.logic-tests
+        ENABLE_APP_INTENTS_METADATA_GENERATION: NO
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+    info:
+      path: Tests/Info.plist
+      properties:
+        CFBundleDisplayName: UAGENTLogicTests
+        CFBundleShortVersionString: "$(UAGENT_MARKETING_VERSION)"
+        CFBundleVersion: "$(UAGENT_BUILD_VERSION)"

@@ -1,0 +1,23 @@
+{
+  "name": "@uagent/memory-core",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT core memory search plugin",
+  "type": "module",
+  "devDependencies": {
+    "uagent": "workspace:*"
+  },
+  "peerDependencies": {
+    "uagent": ">=2026.4.6"
+  },
+  "peerDependenciesMeta": {
+    "uagent": {
+      "optional": true
+    }
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

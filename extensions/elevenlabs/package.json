@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/elevenlabs-speech",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT ElevenLabs speech plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

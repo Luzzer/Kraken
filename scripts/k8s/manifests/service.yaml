@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: uagent
+  labels:
+    app: uagent
+spec:
+  type: ClusterIP
+  selector:
+    app: uagent
+  ports:
+    - name: gateway
+      port: 18789
+      targetPort: 18789
+      protocol: TCP

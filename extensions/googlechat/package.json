@@ -1,0 +1,48 @@
+{
+  "name": "@uagent/googlechat",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Google Chat channel plugin",
+  "type": "module",
+  "dependencies": {
+    "google-auth-library": "^10.6.2"
+  },
+  "devDependencies": {
+    "uagent": "workspace:*"
+  },
+  "peerDependencies": {
+    "uagent": ">=2026.4.6"
+  },
+  "peerDependenciesMeta": {
+    "uagent": {
+      "optional": true
+    }
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "channel": {
+      "id": "googlechat",
+      "label": "Google Chat",
+      "selectionLabel": "Google Chat (Chat API)",
+      "detailLabel": "Google Chat",
+      "docsPath": "/channels/googlechat",
+      "docsLabel": "googlechat",
+      "blurb": "Google Workspace Chat app with HTTP webhook.",
+      "aliases": [
+        "gchat",
+        "google-chat"
+      ],
+      "order": 55,
+      "systemImage": "message.badge",
+      "markdownCapable": true
+    },
+    "install": {
+      "npmSpec": "@uagent/googlechat",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.6"
+    }
+  }
+}

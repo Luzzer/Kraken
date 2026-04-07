@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/cloudflare-ai-gateway-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Cloudflare AI Gateway provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/runway-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Runway video provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

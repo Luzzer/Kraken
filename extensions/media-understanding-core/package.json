@@ -1,0 +1,7 @@
+{
+  "name": "@uagent/media-understanding-core",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT media understanding runtime package",
+  "type": "module"
+}

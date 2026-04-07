@@ -1,0 +1,14 @@
+{
+  "name": "@uagent/acpx",
+  "version": "2026.4.6",
+  "description": "UAGENT ACP runtime backend",
+  "type": "module",
+  "dependencies": {
+    "acpx": "0.5.1"
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

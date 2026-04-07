@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/nvidia-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT NVIDIA provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

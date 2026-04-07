@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/litellm-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT LiteLLM provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/openrouter-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT OpenRouter provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

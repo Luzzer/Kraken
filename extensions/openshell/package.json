@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/openshell-sandbox",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT OpenShell sandbox backend",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

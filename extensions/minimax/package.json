@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/minimax-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT MiniMax provider and OAuth plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

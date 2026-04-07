@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/perplexity-plugin",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT Perplexity plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

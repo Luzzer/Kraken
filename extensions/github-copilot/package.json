@@ -1,0 +1,12 @@
+{
+  "name": "@uagent/github-copilot-provider",
+  "version": "2026.4.6",
+  "private": true,
+  "description": "UAGENT GitHub Copilot provider plugin",
+  "type": "module",
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

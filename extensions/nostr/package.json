@@ -1,0 +1,51 @@
+{
+  "name": "@uagent/nostr",
+  "version": "2026.4.6",
+  "description": "UAGENT Nostr channel plugin for NIP-04 encrypted DMs",
+  "type": "module",
+  "dependencies": {
+    "nostr-tools": "^2.23.3"
+  },
+  "devDependencies": {
+    "uagent": "workspace:*"
+  },
+  "peerDependencies": {
+    "uagent": ">=2026.4.6"
+  },
+  "peerDependenciesMeta": {
+    "uagent": {
+      "optional": true
+    }
+  },
+  "uagent": {
+    "extensions": [
+      "./index.ts"
+    ],
+    "setupEntry": "./setup-entry.ts",
+    "channel": {
+      "id": "nostr",
+      "label": "Nostr",
+      "selectionLabel": "Nostr (NIP-04 DMs)",
+      "docsPath": "/channels/nostr",
+      "docsLabel": "nostr",
+      "blurb": "Decentralized protocol; encrypted DMs via NIP-04.",
+      "order": 55,
+      "quickstartAllowFrom": true
+    },
+    "install": {
+      "npmSpec": "@uagent/nostr",
+      "defaultChoice": "npm",
+      "minHostVersion": ">=2026.4.6"
+    },
+    "compat": {
+      "pluginApi": ">=2026.4.6"
+    },
+    "build": {
+      "uagentVersion": "2026.4.6"
+    },
+    "release": {
+      "publishToClawHub": true,
+      "publishToNpm": true
+    }
+  }
+}
