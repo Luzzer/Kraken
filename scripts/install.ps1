@@ -1,11 +1,11 @@
 # UAGENT Installer for Windows (PowerShell)
-# Usage: iwr -useb https://uagent.ai/install.ps1 | iex
-# Or: & ([scriptblock]::Create((iwr -useb https://uagent.ai/install.ps1))) -NoOnboard
+# Usage: iwr -useb https://raw.githubusercontent.com/Luzzer/Kraken/main/scripts/install.ps1 | iex
+# Or: & ([scriptblock]::Create((iwr -useb https://raw.githubusercontent.com/Luzzer/Kraken/main/scripts/install.ps1))) -NoOnboard
 
 param(
     [string]$InstallMethod = "npm",
     [string]$Tag = "latest",
-    [string]$GitDir = "$env:USERPROFILE\uagent",
+    [string]$GitDir = "$env:USERPROFILE\Kraken",
     [switch]$NoOnboard,
     [switch]$NoGitUpdate,
     [switch]$DryRun
@@ -224,7 +224,7 @@ function Install-UAGENTGit {
     
     if (!(Test-Path $RepoDir)) {
         Write-Host "  Cloning repository..." -Level info
-        git clone https://github.com/uagent/uagent.git $RepoDir 2>&1
+        git clone https://github.com/Luzzer/Kraken.git $RepoDir 2>&1
     } elseif ($Update) {
         Write-Host "  Updating repository..." -Level info
         git -C $RepoDir pull --rebase 2>&1
@@ -250,9 +250,9 @@ function Install-UAGENTGit {
         New-Item -ItemType Directory -Path $wrapperDir -Force | Out-Null
     }
     
-    @"
+@"
 @echo off
-node "%~dp0..\uagent\dist\entry.js" %*
+node "$RepoDir\uagent.mjs" %*
 "@ | Out-File -FilePath "$wrapperDir\uagent.cmd" -Encoding ASCII -Force
     
     Write-Host "UAGENT installed" -Level success

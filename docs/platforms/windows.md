@@ -44,6 +44,9 @@ Current caveats:
 - if `schtasks` itself wedges or stops responding, UAGENT now aborts that path quickly and falls back instead of hanging forever
 - Scheduled Tasks are still preferred when available because they provide better supervisor status
 
+For source installs of this fork, use the native acceptance bar in
+[Windows fresh clone checklist](/install/windows-fresh-clone).
+
 If you want the native CLI only, without gateway service install, use one of these:
 
 ```powershell
