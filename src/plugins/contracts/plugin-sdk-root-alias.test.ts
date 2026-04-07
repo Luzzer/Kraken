@@ -42,6 +42,7 @@ function loadRootAliasWithStubs(options?: {
         env: options?.env ?? {},
         platform: options?.platform ?? "darwin",
       },
+      URL,
     },
     { filename: rootAliasPath },
   ) as (
@@ -53,9 +54,10 @@ function loadRootAliasWithStubs(options?: {
   ) => void;
   const module = { exports: {} as Record<string, unknown> };
   const aliasPath = options?.aliasPath ?? rootAliasPath;
+  const pathImpl = options?.platform === "win32" ? path.win32 : path;
   const localRequire = ((id: string) => {
     if (id === "node:path") {
-      return path;
+      return pathImpl;
     }
     if (id === "node:fs") {
       return {
@@ -94,7 +96,7 @@ function loadRootAliasWithStubs(options?: {
     }
     throw new Error(`unexpected require: ${id}`);
   }) as NodeJS.Require;
-  wrapper(module.exports, localRequire, module, aliasPath, path.dirname(aliasPath));
+  wrapper(module.exports, localRequire, module, aliasPath, pathImpl.dirname(aliasPath));
   return {
     moduleExports: module.exports,
     get createJitiCalls() {
@@ -225,6 +227,23 @@ describe("plugin-sdk root alias", () => {
 
     expect((lazyModule.moduleExports.slowHelper as () => string)()).toBe("loaded");
     expect(lazyModule.createJitiOptions.at(-1)?.tryNative).toBe(expectedTryNative);
+  });
+
+  it("converts Windows root-alias Jiti specifiers to file URLs", () => {
+    const lazyModule = loadRootAliasWithStubs({
+      aliasPath: String.raw`C:\repo\dist\plugin-sdk\root-alias.cjs`,
+      env: { NODE_ENV: "production" },
+      platform: "win32",
+      distExists: false,
+      monolithicExports: {
+        slowHelper: (): string => "loaded",
+      },
+    });
+
+    expect((lazyModule.moduleExports.slowHelper as () => string)()).toBe("loaded");
+    expect(lazyModule.loadedSpecifiers).toContain(
+      "file:///C:/repo/src/plugin-sdk/compat.ts",
+    );
   });
 
   it("falls back to src files even when the alias itself is loaded from dist", () => {

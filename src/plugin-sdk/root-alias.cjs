@@ -141,6 +141,23 @@ function buildPluginSdkAliasMap(useDist) {
   return aliasMap;
 }
 
+function toSafeJitiImportSpecifier(specifier) {
+  if (process.platform !== "win32") {
+    return specifier;
+  }
+  if (typeof specifier !== "string" || specifier.startsWith("file://")) {
+    return specifier;
+  }
+  if (path.win32.isAbsolute(specifier)) {
+    const normalizedSpecifier = specifier.replace(/\\/g, "/");
+    if (normalizedSpecifier.startsWith("//")) {
+      return new URL(`file:${encodeURI(normalizedSpecifier)}`).href;
+    }
+    return new URL(`file:///${encodeURI(normalizedSpecifier)}`).href;
+  }
+  return specifier;
+}
+
 function getJiti(tryNative) {
   const effectiveTryNative = process.platform === "win32" ? false : tryNative;
 
@@ -169,14 +186,16 @@ function loadMonolithicSdk() {
   const distCandidate = path.resolve(__dirname, "..", "..", "dist", "plugin-sdk", "compat.js");
   if (!shouldPreferSourceGraph && fs.existsSync(distCandidate)) {
     try {
-      monolithicSdk = getJiti(true)(distCandidate);
+      monolithicSdk = getJiti(true)(toSafeJitiImportSpecifier(distCandidate));
       return monolithicSdk;
     } catch {
       // Fall through to source alias if dist is unavailable or stale.
     }
   }
 
-  monolithicSdk = getJiti(false)(path.join(getPackageRoot(), "src", "plugin-sdk", "compat.ts"));
+  monolithicSdk = getJiti(false)(
+    toSafeJitiImportSpecifier(path.join(getPackageRoot(), "src", "plugin-sdk", "compat.ts")),
+  );
   return monolithicSdk;
 }
 
@@ -199,7 +218,9 @@ function loadDiagnosticEventsModule() {
       findDistChunkByPrefix("diagnostic-events");
     if (distCandidate) {
       try {
-        diagnosticEventsModule = normalizeDiagnosticEventsModule(getJiti(true)(distCandidate));
+        diagnosticEventsModule = normalizeDiagnosticEventsModule(
+          getJiti(true)(toSafeJitiImportSpecifier(distCandidate)),
+        );
         return diagnosticEventsModule;
       } catch {
         // Fall through to source path if dist is unavailable or stale.
@@ -208,7 +229,9 @@ function loadDiagnosticEventsModule() {
   }
 
   diagnosticEventsModule = normalizeDiagnosticEventsModule(
-    getJiti(false)(path.join(getPackageRoot(), "src", "infra", "diagnostic-events.ts")),
+    getJiti(false)(
+      toSafeJitiImportSpecifier(path.join(getPackageRoot(), "src", "infra", "diagnostic-events.ts")),
+    ),
   );
   return diagnosticEventsModule;
 }
