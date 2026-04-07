@@ -123,6 +123,7 @@ node .\uagent.mjs onboard
 ```
 
 This is the current supported Windows-native path for this fork.
+This fork also ships the prebuilt A2UI bundle used by `pnpm build`, so native Windows builds do not depend on checking out the full `vendor/a2ui` source tree.
 
 ## Quick start (TL;DR)
 
