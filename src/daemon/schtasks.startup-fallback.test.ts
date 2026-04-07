@@ -160,7 +160,7 @@ describe("Windows startup fallback", () => {
       schtasksResponses.push(
         { code: 0, stdout: "", stderr: "" },
         { code: 1, stdout: "", stderr: "not found" },
-        { code: 5, stdout: "", stderr: "오류: 액세스가 거부되었습니다." },
+        { code: 1, stdout: "", stderr: "����: �׼����� �źεǾ����ϴ�." },
       );
 
       const stdout = new PassThrough();

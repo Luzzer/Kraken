@@ -35,13 +35,13 @@ function resolveTaskName(env: GatewayServiceEnv): string {
 }
 
 function shouldFallbackToStartupEntry(params: { code: number; detail: string }): boolean {
-  return (
-    params.code === 5 ||
-    /access is denied/i.test(params.detail) ||
-    params.code === 124 ||
-    /schtasks timed out/i.test(params.detail) ||
-    /schtasks produced no output/i.test(params.detail)
-  );
+  if (params.code === 0) {
+    return false;
+  }
+  // Native Windows Scheduled Task failures are often recoverable via the
+  // per-user Startup folder, and localized/codepage-mangled stderr can hide
+  // the real cause behind generic exit codes like 1.
+  return true;
 }
 
 export function resolveTaskScriptPath(env: GatewayServiceEnv): string {
