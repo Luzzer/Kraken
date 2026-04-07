@@ -47,6 +47,11 @@
     "build": {
       "uagentVersion": "2026.4.6"
     },
+    "releaseChecks": {
+      "rootDependencyMirrorAllowlist": [
+        "@larksuiteoapi/node-sdk"
+      ]
+    },
     "bundle": {
       "stageRuntimeDependencies": true
     },

@@ -87,12 +87,7 @@ function resolveBundledChannelBoundaryRoot(params: {
   metadata: BundledChannelPluginMetadata;
   modulePath: string;
 }): string {
-  const distRoot = path.resolve(
-    UAGENT_PACKAGE_ROOT,
-    "dist",
-    "extensions",
-    params.metadata.dirName,
-  );
+  const distRoot = path.resolve(UAGENT_PACKAGE_ROOT, "dist", "extensions", params.metadata.dirName);
   if (params.modulePath === distRoot || params.modulePath.startsWith(`${distRoot}${path.sep}`)) {
     return distRoot;
   }
@@ -191,8 +186,8 @@ type BundledChannelState = {
   entriesById: Map<ChannelId, BundledChannelEntryContract>;
   setupEntriesById: Map<ChannelId, BundledChannelSetupEntryContract>;
   sortedIds: readonly ChannelId[];
-  pluginsById: Map<ChannelId, ChannelPlugin>;
-  setupPluginsById: Map<ChannelId, ChannelPlugin>;
+  pluginsById: Map<ChannelId, ChannelPlugin | null>;
+  setupPluginsById: Map<ChannelId, ChannelPlugin | null>;
   secretsById: Map<ChannelId, ChannelPlugin["secrets"] | null>;
   setupSecretsById: Map<ChannelId, ChannelPlugin["secrets"] | null>;
   runtimeSettersById: Map<ChannelId, NonNullable<BundledChannelEntryContract["setChannelRuntime"]>>;
@@ -214,6 +209,15 @@ let cachedBundledChannelState: BundledChannelState | null = null;
 let bundledChannelStateLoadInProgress = false;
 const pluginLoadInProgressIds = new Set<ChannelId>();
 const setupPluginLoadInProgressIds = new Set<ChannelId>();
+
+function warnBundledChannelRuntimeLoadFailure(params: {
+  id: ChannelId;
+  surface: "plugin" | "setup plugin";
+  error: unknown;
+}): void {
+  const detail = formatErrorMessage(params.error);
+  log.warn(`[channels] failed to load bundled channel ${params.surface} ${params.id}: ${detail}`);
+}
 
 function getBundledChannelState(): BundledChannelState {
   if (cachedBundledChannelState) {
@@ -281,9 +285,8 @@ export function listBundledChannelSetupPlugins(): readonly ChannelPlugin[] {
 
 export function getBundledChannelPlugin(id: ChannelId): ChannelPlugin | undefined {
   const state = getBundledChannelState();
-  const cached = state.pluginsById.get(id);
-  if (cached) {
-    return cached;
+  if (state.pluginsById.has(id)) {
+    return state.pluginsById.get(id) ?? undefined;
   }
   if (pluginLoadInProgressIds.has(id)) {
     return undefined;
@@ -294,9 +297,15 @@ export function getBundledChannelPlugin(id: ChannelId): ChannelPlugin | undefine
   }
   pluginLoadInProgressIds.add(id);
   try {
-    const plugin = entry.loadChannelPlugin();
-    state.pluginsById.set(id, plugin);
-    return plugin;
+    try {
+      const plugin = entry.loadChannelPlugin();
+      state.pluginsById.set(id, plugin);
+      return plugin;
+    } catch (error) {
+      warnBundledChannelRuntimeLoadFailure({ id, surface: "plugin", error });
+      state.pluginsById.set(id, null);
+      return undefined;
+    }
   } finally {
     pluginLoadInProgressIds.delete(id);
   }
@@ -318,9 +327,8 @@ export function getBundledChannelSecrets(id: ChannelId): ChannelPlugin["secrets"
 
 export function getBundledChannelSetupPlugin(id: ChannelId): ChannelPlugin | undefined {
   const state = getBundledChannelState();
-  const cached = state.setupPluginsById.get(id);
-  if (cached) {
-    return cached;
+  if (state.setupPluginsById.has(id)) {
+    return state.setupPluginsById.get(id) ?? undefined;
   }
   if (setupPluginLoadInProgressIds.has(id)) {
     return undefined;
@@ -331,9 +339,15 @@ export function getBundledChannelSetupPlugin(id: ChannelId): ChannelPlugin | und
   }
   setupPluginLoadInProgressIds.add(id);
   try {
-    const plugin = entry.loadSetupPlugin();
-    state.setupPluginsById.set(id, plugin);
-    return plugin;
+    try {
+      const plugin = entry.loadSetupPlugin();
+      state.setupPluginsById.set(id, plugin);
+      return plugin;
+    } catch (error) {
+      warnBundledChannelRuntimeLoadFailure({ id, surface: "setup plugin", error });
+      state.setupPluginsById.set(id, null);
+      return undefined;
+    }
   } finally {
     setupPluginLoadInProgressIds.delete(id);
   }

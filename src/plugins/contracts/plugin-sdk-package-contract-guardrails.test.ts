@@ -105,6 +105,26 @@ function readAmazonBedrockPackageJson(): {
   };
 }
 
+function readFeishuPackageJson(): {
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  uagent?: {
+    releaseChecks?: {
+      rootDependencyMirrorAllowlist?: unknown;
+    };
+  };
+} {
+  return JSON.parse(readFileSync(resolve(REPO_ROOT, "extensions/feishu/package.json"), "utf8")) as {
+    dependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+    uagent?: {
+      releaseChecks?: {
+        rootDependencyMirrorAllowlist?: unknown;
+      };
+    };
+  };
+}
+
 function collectRuntimeDependencySpecs(packageJson: {
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
@@ -355,6 +375,21 @@ describe("plugin-sdk package contract guardrails", () => {
     }
   });
 
+  it("mirrors Feishu runtime deps needed by the bundled setup graph", () => {
+    const rootRuntimeDeps = collectRuntimeDependencySpecs(readRootPackageJson());
+    const feishuPackageJson = readFeishuPackageJson();
+    const feishuRuntimeDeps = collectRuntimeDependencySpecs(feishuPackageJson);
+    const allowlist = feishuPackageJson.uagent?.releaseChecks?.rootDependencyMirrorAllowlist;
+
+    expect(Array.isArray(allowlist)).toBe(true);
+    const feishuRootMirrorAllowlist = allowlist as string[];
+    expect(feishuRootMirrorAllowlist).toEqual(expect.arrayContaining(["@larksuiteoapi/node-sdk"]));
+
+    for (const dep of feishuRootMirrorAllowlist) {
+      expect(rootRuntimeDeps.get(dep)).toBe(feishuRuntimeDeps.get(dep));
+    }
+  });
+
   it("resolves matrix crypto WASM from the root runtime surface", () => {
     const rootRequire = createRootPackageRequire();
     // Normalize filesystem separators so the package assertion stays portable.
@@ -374,12 +409,16 @@ describe("plugin-sdk package contract guardrails", () => {
     const packedPackageJson = await readPackedRootPackageJson(archivePath);
     const matrixPackageJson = readMatrixPackageJson();
     const bedrockPackageJson = readAmazonBedrockPackageJson();
+    const feishuPackageJson = readFeishuPackageJson();
 
     expect(packedPackageJson.dependencies?.["@matrix-org/matrix-sdk-crypto-wasm"]).toBe(
       matrixPackageJson.dependencies?.["@matrix-org/matrix-sdk-crypto-wasm"],
     );
     expect(packedPackageJson.dependencies?.["@aws-sdk/client-bedrock"]).toBe(
       bedrockPackageJson.dependencies?.["@aws-sdk/client-bedrock"],
+    );
+    expect(packedPackageJson.dependencies?.["@larksuiteoapi/node-sdk"]).toBe(
+      feishuPackageJson.dependencies?.["@larksuiteoapi/node-sdk"],
     );
     expect(packedPackageJson.dependencies?.["@uagent/plugin-package-contract"]).toBeUndefined();
   });
