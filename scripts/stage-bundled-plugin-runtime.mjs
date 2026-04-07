@@ -35,6 +35,10 @@ function ensureSymlink(targetValue, targetPath, type) {
 }
 
 function symlinkPath(sourcePath, targetPath, type) {
+  if (process.platform === "win32") {
+    fs.copyFileSync(sourcePath, targetPath);
+    return;
+  }
   ensureSymlink(relativeSymlinkTarget(sourcePath, targetPath), targetPath, type);
 }
 

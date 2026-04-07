@@ -155,6 +155,27 @@ describe("Windows startup fallback", () => {
     });
   });
 
+  it("falls back to a Startup-folder launcher when schtasks returns localized access denied text", async () => {
+    await withWindowsEnv("uagent-win-startup-", async ({ env }) => {
+      schtasksResponses.push(
+        { code: 0, stdout: "", stderr: "" },
+        { code: 1, stdout: "", stderr: "not found" },
+        { code: 5, stdout: "", stderr: "오류: 액세스가 거부되었습니다." },
+      );
+
+      const stdout = new PassThrough();
+      await installScheduledTask({
+        env,
+        stdout,
+        programArguments: ["node", "gateway.js", "--port", "18789"],
+        environment: { UAGENT_GATEWAY_PORT: "18789" },
+      });
+
+      await expect(fs.access(resolveStartupEntryPath(env))).resolves.toBeUndefined();
+      expectStartupFallbackSpawn(env);
+    });
+  });
+
   it("falls back to a Startup-folder launcher when schtasks create hangs", async () => {
     await withWindowsEnv("uagent-win-startup-", async ({ env }) => {
       schtasksResponses.push(

@@ -25,6 +25,23 @@ export function normalizeJitiAliasTargetPath(targetPath: string): string {
   return process.platform === "win32" ? targetPath.replace(/\\/g, "/") : targetPath;
 }
 
+function windowsAbsolutePathToFileUrl(specifier: string): string {
+  const normalizedSpecifier = specifier.replaceAll("\\", "/");
+  if (normalizedSpecifier.startsWith("//")) {
+    const [host, ...segments] = normalizedSpecifier.slice(2).split("/");
+    const encodedPath =
+      segments.length > 0 ? `/${segments.map((segment) => encodeURIComponent(segment)).join("/")}` : "/";
+    return `file://${host}${encodedPath}`;
+  }
+  const drivePrefix = normalizedSpecifier.slice(0, 2);
+  const encodedPath = normalizedSpecifier
+    .slice(2)
+    .split("/")
+    .map((segment, index) => (index === 0 && segment === "" ? "" : encodeURIComponent(segment)))
+    .join("/");
+  return `file:///${drivePrefix}${encodedPath}`;
+}
+
 /**
  * Jiti can forward absolute Windows paths into the native ESM loader, which
  * expects file:// URLs instead of raw drive-letter specifiers like C:\...
@@ -37,11 +54,7 @@ export function toSafeJitiImportSpecifier(specifier: string): string {
     return specifier;
   }
   if (path.win32.isAbsolute(specifier)) {
-    const normalizedSpecifier = specifier.replaceAll("\\", "/");
-    if (normalizedSpecifier.startsWith("//")) {
-      return new URL(`file:${encodeURI(normalizedSpecifier)}`).href;
-    }
-    return new URL(`file:///${encodeURI(normalizedSpecifier)}`).href;
+    return windowsAbsolutePathToFileUrl(specifier);
   }
   return specifier;
 }

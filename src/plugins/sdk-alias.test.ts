@@ -730,6 +730,9 @@ describe("plugin sdk alias helpers", () => {
         "file:///C:/Users/alice/plugin/index.mjs",
       );
       expect(toSafeJitiImportSpecifier("./relative/index.mjs")).toBe("./relative/index.mjs");
+      expect(toSafeJitiImportSpecifier("C:\\Users\\alice#tag\\plugin\\index.mjs")).toBe(
+        "file:///C:/Users/alice%23tag/plugin/index.mjs",
+      );
     } finally {
       Object.defineProperty(process, "platform", {
         configurable: true,

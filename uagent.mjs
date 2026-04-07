@@ -38,6 +38,10 @@ const ensureSupportedNodeVersion = () => {
 
 ensureSupportedNodeVersion();
 
+if (process.platform === "win32" && typeof module.register === "function") {
+  module.register("./windows-esm-fix.mjs", import.meta.url);
+}
+
 // https://nodejs.org/api/module.html#module-compile-cache
 if (module.enableCompileCache && !process.env.NODE_DISABLE_COMPILE_CACHE) {
   try {

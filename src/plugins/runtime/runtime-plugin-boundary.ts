@@ -5,6 +5,7 @@ import { loadConfig } from "../../config/config.js";
 import { loadPluginManifestRegistry } from "../manifest-registry.js";
 import {
   buildPluginLoaderJitiOptions,
+  normalizeJitiAliasTargetPath,
   resolvePluginSdkAliasFile,
   resolvePluginSdkScopedAliasMap,
   shouldPreferNativeJiti,
@@ -137,11 +138,16 @@ export function getPluginBoundaryJiti(
   const aliasMap = {
     ...(pluginSdkAlias
       ? {
-          "uagent/plugin-sdk": pluginSdkAlias,
-          "@uagent/plugin-sdk": pluginSdkAlias,
+          "uagent/plugin-sdk": normalizeJitiAliasTargetPath(pluginSdkAlias),
+          "@uagent/plugin-sdk": normalizeJitiAliasTargetPath(pluginSdkAlias),
         }
       : {}),
-    ...resolvePluginSdkScopedAliasMap({ modulePath }),
+    ...Object.fromEntries(
+      Object.entries(resolvePluginSdkScopedAliasMap({ modulePath })).map(([key, value]) => [
+        key,
+        normalizeJitiAliasTargetPath(value),
+      ]),
+    ),
   };
   const loader = createJiti(import.meta.url, {
     ...buildPluginLoaderJitiOptions(aliasMap),

@@ -24,6 +24,7 @@
     "CHANGELOG.md",
     "LICENSE",
     "uagent.mjs",
+    "windows-esm-fix.mjs",
     "README.md",
     "assets/",
     "dist/",
