@@ -57,7 +57,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            assets.directories.add("../../shared/UAGENTKit/Sources/UAGENTKit/Resources")
+            assets.directories.add("../../shared/UAGENTKit/Sources/UAgentKit/Resources")
         }
     }
 

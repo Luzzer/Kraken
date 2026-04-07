@@ -102,4 +102,56 @@ describe("stageBundledPluginRuntimeDeps", () => {
       expect(fs.existsSync(path.join(stagedRoot, "types"))).toBe(false);
     });
   });
+
+  it("accepts root-mirrored runtime deps without staging local node_modules contents", () => {
+    const repoRoot = makeRepoRoot("uagent-stage-root-mirror-runtime-deps-");
+
+    writeRepoFile(
+      repoRoot,
+      "package.json",
+      JSON.stringify(
+        {
+          name: "uagent",
+          version: "2026.4.6",
+          dependencies: {
+            "@aws-sdk/client-bedrock": "3.1024.0",
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
+    writeRepoFile(
+      repoRoot,
+      "dist/extensions/amazon-bedrock/package.json",
+      JSON.stringify(
+        {
+          name: "@uagent/amazon-bedrock-provider",
+          version: "2026.4.6",
+          dependencies: {
+            "@aws-sdk/client-bedrock": "3.1024.0",
+          },
+          uagent: {
+            bundle: {
+              stageRuntimeDependencies: true,
+            },
+            releaseChecks: {
+              rootDependencyMirrorAllowlist: ["@aws-sdk/client-bedrock"],
+            },
+          },
+        },
+        null,
+        2,
+      ),
+    );
+
+    return loadStageBundledPluginRuntimeDeps().then((stageBundledPluginRuntimeDeps) => {
+      stageBundledPluginRuntimeDeps({ repoRoot });
+
+      const stagedRoot = path.join(repoRoot, "dist", "extensions", "amazon-bedrock");
+      expect(fs.existsSync(path.join(stagedRoot, ".uagent-runtime-deps-stamp.json"))).toBe(true);
+      expect(fs.readdirSync(path.join(stagedRoot, "node_modules"))).toEqual([]);
+    });
+  });
 });

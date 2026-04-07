@@ -143,6 +143,56 @@ function shouldStageRuntimeDeps(packageJson) {
   return packageJson.uagent?.bundle?.stageRuntimeDependencies === true;
 }
 
+function collectRuntimeDependencySpecs(packageJson) {
+  return new Map([
+    ...Object.entries(packageJson.dependencies ?? {}),
+    ...Object.entries(packageJson.optionalDependencies ?? {}),
+  ]);
+}
+
+function resolveRootRuntimeDeps(repoRoot) {
+  const rootPackageJsonPath = path.join(repoRoot, "package.json");
+  if (!fs.existsSync(rootPackageJsonPath)) {
+    return new Map();
+  }
+  return collectRuntimeDependencySpecs(readJson(rootPackageJsonPath));
+}
+
+function hasRootRuntimeDependencyMirror(repoRoot, packageJson) {
+  const allowlist = packageJson.uagent?.releaseChecks?.rootDependencyMirrorAllowlist;
+  if (!Array.isArray(allowlist) || allowlist.length === 0) {
+    return false;
+  }
+
+  const pluginRuntimeDeps = collectRuntimeDependencySpecs(packageJson);
+  const rootRuntimeDeps = resolveRootRuntimeDeps(repoRoot);
+  if (pluginRuntimeDeps.size === 0) {
+    return false;
+  }
+
+  for (const [depName, depSpec] of pluginRuntimeDeps) {
+    if (!allowlist.includes(depName)) {
+      return false;
+    }
+    if (rootRuntimeDeps.get(depName) !== depSpec) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function markRuntimeDepsSatisfiedByRootMirror(pluginDir, fingerprint) {
+  const nodeModulesDir = path.join(pluginDir, "node_modules");
+  const stampPath = resolveRuntimeDepsStampPath(pluginDir);
+  fs.mkdirSync(nodeModulesDir, { recursive: true });
+  writeJson(stampPath, {
+    fingerprint,
+    generatedAt: new Date().toISOString(),
+    mode: "root-runtime-dependency-mirror",
+  });
+}
+
 function sanitizeBundledManifestForRuntimeInstall(pluginDir) {
   const manifestPath = path.join(pluginDir, "package.json");
   const packageJson = readJson(manifestPath);
@@ -267,6 +317,10 @@ function installPluginRuntimeDeps(params) {
     repoRoot &&
     stageInstalledRootRuntimeDeps({ fingerprint, packageJson, pluginDir, repoRoot })
   ) {
+    return;
+  }
+  if (repoRoot && hasRootRuntimeDependencyMirror(repoRoot, packageJson)) {
+    markRuntimeDepsSatisfiedByRootMirror(pluginDir, fingerprint);
     return;
   }
   const nodeModulesDir = path.join(pluginDir, "node_modules");

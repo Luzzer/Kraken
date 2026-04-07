@@ -30,7 +30,7 @@ let package = Package(
                 "UAGENTProtocol",
                 .product(name: "ElevenLabsKit", package: "ElevenLabsKit"),
             ],
-            path: "Sources/UAGENTKit",
+            path: "Sources/UAgentKit",
             resources: [
                 .process("Resources"),
             ],

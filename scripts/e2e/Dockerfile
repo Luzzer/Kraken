@@ -37,7 +37,7 @@ COPY --chown=appuser:appuser skills ./skills
 COPY --chown=appuser:appuser ui ./ui
 COPY --chown=appuser:appuser extensions ./extensions
 COPY --chown=appuser:appuser vendor/a2ui/renderers/lit ./vendor/a2ui/renderers/lit
-COPY --chown=appuser:appuser apps/shared/UAGENTKit/Sources/UAGENTKit/Resources ./apps/shared/UAGENTKit/Sources/UAGENTKit/Resources
+COPY --chown=appuser:appuser apps/shared/UAGENTKit/Sources/UAgentKit/Resources ./apps/shared/UAGENTKit/Sources/UAgentKit/Resources
 COPY --chown=appuser:appuser apps/shared/UAGENTKit/Tools/CanvasA2UI ./apps/shared/UAGENTKit/Tools/CanvasA2UI
 
 RUN pnpm build
