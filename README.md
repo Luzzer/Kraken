@@ -21,7 +21,7 @@ If you want a personal, single-user assistant that feels local, fast, and always
 [Website](https://uagent.ai) · [Docs](https://docs.uagent.ai) · [Vision](VISION.md) · [DeepWiki](https://deepwiki.com/uagent/uagent) · [Getting Started](https://docs.uagent.ai/start/getting-started) · [Updating](https://docs.uagent.ai/install/updating) · [Showcase](https://docs.uagent.ai/start/showcase) · [FAQ](https://docs.uagent.ai/help/faq) · [Onboarding](https://docs.uagent.ai/start/wizard) · [Nix](https://github.com/uagent/nix-uagent) · [Docker](https://docs.uagent.ai/install/docker)
 
 Preferred setup: run `uagent onboard` in your terminal.
-UAGENT Onboard guides you step by step through setting up the gateway, workspace, channels, and skills. It is the recommended CLI setup path and works on **macOS, Linux, and Windows (via WSL2; strongly recommended)**.
+UAGENT Onboard guides you step by step through setting up the gateway, workspace, channels, and skills. It is the recommended CLI setup path and works on **macOS, Linux, and Windows**. On Windows, WSL2 is still the smoothest path, but native PowerShell install from source also works.
 Works with npm, pnpm, or bun.
 New install? Start here: [Getting started](https://docs.uagent.ai/start/getting-started)
 
@@ -104,6 +104,26 @@ uagent onboard --install-daemon
 
 UAGENT Onboard installs the Gateway daemon (launchd/systemd user service) so it stays running.
 
+### Windows (native PowerShell)
+
+If you want to run this repo directly on Windows without WSL, use a source install from PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+winget install Git.Git
+npm install -g pnpm
+
+git clone git@github.com:Luzzer/Kraken.git $env:USERPROFILE\Kraken
+cd $env:USERPROFILE\Kraken
+pnpm install
+pnpm build
+
+node .\uagent.mjs --help
+node .\uagent.mjs onboard
+```
+
+This is the current supported Windows-native path for this fork.
+
 ## Quick start (TL;DR)
 
 Runtime: **Node 24 (recommended) or Node 22.16+**.
@@ -138,8 +158,8 @@ Details: [Development channels](https://docs.uagent.ai/install/development-chann
 Prefer `pnpm` for builds from source. Bun is optional for running TypeScript directly.
 
 ```bash
-git clone https://github.com/uagent/uagent.git
-cd uagent
+git clone git@github.com:Luzzer/Kraken.git
+cd Kraken
 
 pnpm install
 pnpm ui:build # auto-installs UI deps on first run
