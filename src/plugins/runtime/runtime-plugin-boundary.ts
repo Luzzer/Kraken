@@ -8,6 +8,7 @@ import {
   resolvePluginSdkAliasFile,
   resolvePluginSdkScopedAliasMap,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "../sdk-alias.js";
 
 type PluginRuntimeRecord = {
@@ -154,7 +155,9 @@ export function loadPluginBoundaryModuleWithJiti<TModule>(
   modulePath: string,
   loaders: Map<boolean, ReturnType<typeof createJiti>>,
 ): TModule {
-  return getPluginBoundaryJiti(modulePath, loaders)(modulePath) as TModule;
+  return getPluginBoundaryJiti(modulePath, loaders)(
+    toSafeJitiImportSpecifier(modulePath),
+  ) as TModule;
 }
 
 export function createCachedPluginBoundaryModuleLoader<TModule>(

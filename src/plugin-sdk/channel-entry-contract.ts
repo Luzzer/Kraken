@@ -12,6 +12,7 @@ import {
   buildPluginLoaderJitiOptions,
   resolveLoaderPackageRoot,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "../plugins/sdk-alias.js";
 import type { AnyAgentTool, UAGENTPluginApi, PluginCommandContext } from "../plugins/types.js";
 
@@ -278,6 +279,7 @@ function loadBundledEntryModuleSync(importMetaUrl: string, specifier: string): u
     return cached;
   }
   let loaded: unknown;
+  const safeImportPath = toSafeJitiImportSpecifier(modulePath);
   if (
     process.platform === "win32" &&
     modulePath.includes(`${path.sep}dist${path.sep}`) &&
@@ -286,10 +288,10 @@ function loadBundledEntryModuleSync(importMetaUrl: string, specifier: string): u
     try {
       loaded = nodeRequire(modulePath);
     } catch {
-      loaded = getJiti(modulePath)(modulePath);
+      loaded = getJiti(modulePath)(safeImportPath);
     }
   } else {
-    loaded = getJiti(modulePath)(modulePath);
+    loaded = getJiti(modulePath)(safeImportPath);
   }
   loadedModuleExports.set(modulePath, loaded);
   return loaded;

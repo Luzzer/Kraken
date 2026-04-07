@@ -7,6 +7,7 @@ import {
   buildPluginLoaderAliasMap,
   buildPluginLoaderJitiOptions,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "../../plugins/sdk-alias.js";
 
 const nodeRequire = createRequire(import.meta.url);
@@ -104,5 +105,5 @@ export function loadChannelPluginModule(params: {
       // Fall back to the Jiti loader path when require() cannot handle the entry.
     }
   }
-  return loadModule(safePath)(safePath);
+  return loadModule(safePath)(toSafeJitiImportSpecifier(safePath));
 }

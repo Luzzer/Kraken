@@ -18,6 +18,7 @@ import {
   buildPluginLoaderAliasMap,
   buildPluginLoaderJitiOptions,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
   type PluginSdkResolutionPreference,
 } from "./sdk-alias.js";
 import type { UAGENTPluginDefinition, UAGENTPluginModule } from "./types.js";
@@ -284,7 +285,7 @@ export function loadBundledCapabilityRuntimeRegistry(params: {
 
     let mod: UAGENTPluginModule | null = null;
     try {
-      mod = getJiti(safeSource)(safeSource) as UAGENTPluginModule;
+      mod = getJiti(safeSource)(toSafeJitiImportSpecifier(safeSource)) as UAGENTPluginModule;
     } catch (error) {
       recordCapabilityLoadError(registry, record, String(error));
       continue;

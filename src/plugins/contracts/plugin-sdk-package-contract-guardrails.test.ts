@@ -125,6 +125,48 @@ function readFeishuPackageJson(): {
   };
 }
 
+function readSlackPackageJson(): {
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  uagent?: {
+    releaseChecks?: {
+      rootDependencyMirrorAllowlist?: unknown;
+    };
+  };
+} {
+  return JSON.parse(readFileSync(resolve(REPO_ROOT, "extensions/slack/package.json"), "utf8")) as {
+    dependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+    uagent?: {
+      releaseChecks?: {
+        rootDependencyMirrorAllowlist?: unknown;
+      };
+    };
+  };
+}
+
+function readTelegramPackageJson(): {
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  uagent?: {
+    releaseChecks?: {
+      rootDependencyMirrorAllowlist?: unknown;
+    };
+  };
+} {
+  return JSON.parse(
+    readFileSync(resolve(REPO_ROOT, "extensions/telegram/package.json"), "utf8"),
+  ) as {
+    dependencies?: Record<string, string>;
+    optionalDependencies?: Record<string, string>;
+    uagent?: {
+      releaseChecks?: {
+        rootDependencyMirrorAllowlist?: unknown;
+      };
+    };
+  };
+}
+
 function collectRuntimeDependencySpecs(packageJson: {
   dependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
@@ -390,6 +432,44 @@ describe("plugin-sdk package contract guardrails", () => {
     }
   });
 
+  it("mirrors Slack runtime deps needed by the bundled setup graph", () => {
+    const rootRuntimeDeps = collectRuntimeDependencySpecs(readRootPackageJson());
+    const slackPackageJson = readSlackPackageJson();
+    const slackRuntimeDeps = collectRuntimeDependencySpecs(slackPackageJson);
+    const allowlist = slackPackageJson.uagent?.releaseChecks?.rootDependencyMirrorAllowlist;
+
+    expect(Array.isArray(allowlist)).toBe(true);
+    const slackRootMirrorAllowlist = allowlist as string[];
+    expect(slackRootMirrorAllowlist).toEqual(
+      expect.arrayContaining(["@slack/bolt", "@slack/web-api"]),
+    );
+
+    for (const dep of slackRootMirrorAllowlist) {
+      expect(rootRuntimeDeps.get(dep)).toBe(slackRuntimeDeps.get(dep));
+    }
+  });
+
+  it("mirrors Telegram runtime deps needed by the bundled setup graph", () => {
+    const rootRuntimeDeps = collectRuntimeDependencySpecs(readRootPackageJson());
+    const telegramPackageJson = readTelegramPackageJson();
+    const telegramRuntimeDeps = collectRuntimeDependencySpecs(telegramPackageJson);
+    const allowlist = telegramPackageJson.uagent?.releaseChecks?.rootDependencyMirrorAllowlist;
+
+    expect(Array.isArray(allowlist)).toBe(true);
+    const telegramRootMirrorAllowlist = allowlist as string[];
+    expect(telegramRootMirrorAllowlist).toEqual(
+      expect.arrayContaining([
+        "@grammyjs/runner",
+        "@grammyjs/transformer-throttler",
+        "grammy",
+      ]),
+    );
+
+    for (const dep of telegramRootMirrorAllowlist) {
+      expect(rootRuntimeDeps.get(dep)).toBe(telegramRuntimeDeps.get(dep));
+    }
+  });
+
   it("resolves matrix crypto WASM from the root runtime surface", () => {
     const rootRequire = createRootPackageRequire();
     // Normalize filesystem separators so the package assertion stays portable.
@@ -410,6 +490,8 @@ describe("plugin-sdk package contract guardrails", () => {
     const matrixPackageJson = readMatrixPackageJson();
     const bedrockPackageJson = readAmazonBedrockPackageJson();
     const feishuPackageJson = readFeishuPackageJson();
+    const slackPackageJson = readSlackPackageJson();
+    const telegramPackageJson = readTelegramPackageJson();
 
     expect(packedPackageJson.dependencies?.["@matrix-org/matrix-sdk-crypto-wasm"]).toBe(
       matrixPackageJson.dependencies?.["@matrix-org/matrix-sdk-crypto-wasm"],
@@ -420,6 +502,19 @@ describe("plugin-sdk package contract guardrails", () => {
     expect(packedPackageJson.dependencies?.["@larksuiteoapi/node-sdk"]).toBe(
       feishuPackageJson.dependencies?.["@larksuiteoapi/node-sdk"],
     );
+    expect(packedPackageJson.dependencies?.["@slack/bolt"]).toBe(
+      slackPackageJson.dependencies?.["@slack/bolt"],
+    );
+    expect(packedPackageJson.dependencies?.["@slack/web-api"]).toBe(
+      slackPackageJson.dependencies?.["@slack/web-api"],
+    );
+    expect(packedPackageJson.dependencies?.["@grammyjs/runner"]).toBe(
+      telegramPackageJson.dependencies?.["@grammyjs/runner"],
+    );
+    expect(packedPackageJson.dependencies?.["@grammyjs/transformer-throttler"]).toBe(
+      telegramPackageJson.dependencies?.["@grammyjs/transformer-throttler"],
+    );
+    expect(packedPackageJson.dependencies?.grammy).toBe(telegramPackageJson.dependencies?.grammy);
     expect(packedPackageJson.dependencies?.["@uagent/plugin-package-contract"]).toBeUndefined();
   });
 

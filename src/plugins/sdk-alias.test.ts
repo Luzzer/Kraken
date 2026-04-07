@@ -18,6 +18,7 @@ import {
   resolvePluginRuntimeModulePath,
   resolvePluginSdkAliasFile,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "./sdk-alias.js";
 import {
   cleanupTrackedTempDirs,
@@ -703,6 +704,32 @@ describe("plugin sdk alias helpers", () => {
       expect(normalizeJitiAliasTargetPath(String.raw`C:\repo\dist\plugin-sdk\root-alias.cjs`)).toBe(
         "C:/repo/dist/plugin-sdk/root-alias.cjs",
       );
+    } finally {
+      Object.defineProperty(process, "platform", {
+        configurable: true,
+        value: originalPlatform,
+      });
+    }
+  });
+
+  it("converts Windows absolute Jiti import specifiers to file URLs", () => {
+    const originalPlatform = process.platform;
+    Object.defineProperty(process, "platform", {
+      configurable: true,
+      value: "win32",
+    });
+
+    try {
+      expect(toSafeJitiImportSpecifier("C:\\Users\\alice\\plugin\\index.mjs")).toBe(
+        "file:///C:/Users/alice/plugin/index.mjs",
+      );
+      expect(toSafeJitiImportSpecifier("\\\\server\\share\\plugin\\index.mjs")).toBe(
+        "file://server/share/plugin/index.mjs",
+      );
+      expect(toSafeJitiImportSpecifier("file:///C:/Users/alice/plugin/index.mjs")).toBe(
+        "file:///C:/Users/alice/plugin/index.mjs",
+      );
+      expect(toSafeJitiImportSpecifier("./relative/index.mjs")).toBe("./relative/index.mjs");
     } finally {
       Object.defineProperty(process, "platform", {
         configurable: true,

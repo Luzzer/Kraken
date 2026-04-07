@@ -10,6 +10,7 @@ import {
   buildPluginLoaderJitiOptions,
   resolveLoaderPackageRoot,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "./sdk-alias.js";
 
 const UAGENT_PACKAGE_ROOT =
@@ -123,7 +124,9 @@ export function loadBundledPluginPublicArtifactModuleSync<T extends object>(para
   const sentinel = {} as T;
   loadedPublicSurfaceModules.set(location.modulePath, sentinel);
   try {
-    const loaded = getJiti(location.modulePath)(location.modulePath) as T;
+    const loaded = getJiti(location.modulePath)(
+      toSafeJitiImportSpecifier(location.modulePath),
+    ) as T;
     Object.assign(sentinel, loaded);
     return sentinel;
   } catch (error) {

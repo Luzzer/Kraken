@@ -13,6 +13,7 @@ import {
   buildPluginLoaderAliasMap,
   buildPluginLoaderJitiOptions,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "./sdk-alias.js";
 import type {
   CliBackendPlugin,
@@ -222,7 +223,7 @@ export function resolvePluginSetupRegistry(params?: {
 
     let mod: UAGENTPluginModule;
     try {
-      mod = getJiti(setupSource)(setupSource) as UAGENTPluginModule;
+      mod = getJiti(setupSource)(toSafeJitiImportSpecifier(setupSource)) as UAGENTPluginModule;
     } catch {
       continue;
     }
@@ -345,7 +346,7 @@ export function resolvePluginSetupProvider(params: {
 
   let mod: UAGENTPluginModule;
   try {
-    mod = getJiti(setupSource)(setupSource) as UAGENTPluginModule;
+    mod = getJiti(setupSource)(toSafeJitiImportSpecifier(setupSource)) as UAGENTPluginModule;
   } catch {
     setupProviderCache.set(cacheKey, null);
     return undefined;

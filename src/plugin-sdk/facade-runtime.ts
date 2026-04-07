@@ -26,6 +26,7 @@ import {
   buildPluginLoaderJitiOptions,
   resolveLoaderPackageRoot,
   shouldPreferNativeJiti,
+  toSafeJitiImportSpecifier,
 } from "../plugins/sdk-alias.js";
 
 const UAGENT_PACKAGE_ROOT =
@@ -644,7 +645,7 @@ function loadFacadeModuleAtLocationSync<T extends object>(params: {
   try {
     loaded =
       params.loadModule?.(location.modulePath) ??
-      (getJiti(location.modulePath)(location.modulePath) as T);
+      (getJiti(location.modulePath)(toSafeJitiImportSpecifier(location.modulePath)) as T);
     // Back-fill the sentinel before resolving plugin ownership. That lookup can
     // trigger config loading, plugin auto-enable, and other facade reads that
     // re-enter this loader for the same module path.
