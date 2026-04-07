@@ -1,8 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
-  GATEWAY_SERVICE_KIND,
-  GATEWAY_SERVICE_MARKER,
   resolveGatewayLaunchAgentLabel,
   resolveGatewaySystemdServiceName,
   resolveGatewayWindowsTaskName,
@@ -78,52 +76,6 @@ export function detectMarkerLineWithGateway(contents: string): Marker | null {
   return null;
 }
 
-function hasGatewayServiceMarker(content: string): boolean {
-  const lower = content.toLowerCase();
-  const markerKeys = ["uagent_service_marker"];
-  const kindKeys = ["uagent_service_kind"];
-  const markerValues = [GATEWAY_SERVICE_MARKER.toLowerCase()];
-  const hasMarkerKey = markerKeys.some((key) => lower.includes(key));
-  const hasKindKey = kindKeys.some((key) => lower.includes(key));
-  const hasMarkerValue = markerValues.some((value) => lower.includes(value));
-  return (
-    hasMarkerKey &&
-    hasKindKey &&
-    hasMarkerValue &&
-    lower.includes(GATEWAY_SERVICE_KIND.toLowerCase())
-  );
-}
-
-function isUAGENTGatewayLaunchdService(label: string, contents: string): boolean {
-  if (hasGatewayServiceMarker(contents)) {
-    return true;
-  }
-  const lowerContents = contents.toLowerCase();
-  if (!lowerContents.includes("gateway")) {
-    return false;
-  }
-  return label.startsWith("ai.uagent.");
-}
-
-function isUAGENTGatewaySystemdService(name: string, contents: string): boolean {
-  if (hasGatewayServiceMarker(contents)) {
-    return true;
-  }
-  if (!name.startsWith("uagent-gateway")) {
-    return false;
-  }
-  return contents.toLowerCase().includes("gateway");
-}
-
-function isUAGENTGatewayTaskName(name: string): boolean {
-  const normalized = name.trim().toLowerCase();
-  if (!normalized) {
-    return false;
-  }
-  const defaultName = resolveGatewayWindowsTaskName().toLowerCase();
-  return normalized === defaultName || normalized.startsWith("uagent gateway");
-}
-
 function tryExtractPlistLabel(contents: string): string | null {
   const match = contents.match(/<key>Label<\/key>\s*<string>([\s\S]*?)<\/string>/i);
   if (!match) {
@@ -132,12 +84,12 @@ function tryExtractPlistLabel(contents: string): string | null {
   return match[1]?.trim() || null;
 }
 
-function isIgnoredLaunchdLabel(label: string): boolean {
-  return label === resolveGatewayLaunchAgentLabel();
+function isIgnoredLaunchdLabel(label: string, currentLabel: string): boolean {
+  return label === currentLabel;
 }
 
-function isIgnoredSystemdName(name: string): boolean {
-  return name === resolveGatewaySystemdServiceName();
+function isIgnoredSystemdName(name: string, currentName: string): boolean {
+  return name === currentName;
 }
 
 function isLegacyLabel(label: string): boolean {
@@ -196,12 +148,13 @@ async function collectServiceFiles(params: {
 async function scanLaunchdDir(params: {
   dir: string;
   scope: "user" | "system";
+  currentLabel: string;
 }): Promise<ExtraGatewayService[]> {
   const results: ExtraGatewayService[] = [];
   const candidates = await collectServiceFiles({
     dir: params.dir,
     extension: ".plist",
-    isIgnoredName: isIgnoredLaunchdLabel,
+    isIgnoredName: (name) => isIgnoredLaunchdLabel(name, params.currentLabel),
   });
 
   for (const { name: labelFromName, fullPath, contents } of candidates) {
@@ -222,10 +175,7 @@ async function scanLaunchdDir(params: {
       });
       continue;
     }
-    if (isIgnoredLaunchdLabel(label)) {
-      continue;
-    }
-    if (marker === "uagent" && isUAGENTGatewayLaunchdService(label, contents)) {
+    if (isIgnoredLaunchdLabel(label, params.currentLabel)) {
       continue;
     }
     results.push({
@@ -244,20 +194,18 @@ async function scanLaunchdDir(params: {
 async function scanSystemdDir(params: {
   dir: string;
   scope: "user" | "system";
+  currentServiceName: string;
 }): Promise<ExtraGatewayService[]> {
   const results: ExtraGatewayService[] = [];
   const candidates = await collectServiceFiles({
     dir: params.dir,
     extension: ".service",
-    isIgnoredName: isIgnoredSystemdName,
+    isIgnoredName: (name) => isIgnoredSystemdName(name, params.currentServiceName),
   });
 
-  for (const { entry, name, fullPath, contents } of candidates) {
+  for (const { entry, fullPath, contents } of candidates) {
     const marker = detectMarkerLineWithGateway(contents);
     if (!marker) {
-      continue;
-    }
-    if (marker === "uagent" && isUAGENTGatewaySystemdService(name, contents)) {
       continue;
     }
     results.push({
@@ -339,10 +287,12 @@ export async function findExtraGatewayServices(
   if (process.platform === "darwin") {
     try {
       const home = resolveHomeDir(env);
+      const currentLabel = resolveGatewayLaunchAgentLabel(env.UAGENT_PROFILE);
       const userDir = path.join(home, "Library", "LaunchAgents");
       for (const svc of await scanLaunchdDir({
         dir: userDir,
         scope: "user",
+        currentLabel,
       })) {
         push(svc);
       }
@@ -350,12 +300,14 @@ export async function findExtraGatewayServices(
         for (const svc of await scanLaunchdDir({
           dir: path.join(path.sep, "Library", "LaunchAgents"),
           scope: "system",
+          currentLabel,
         })) {
           push(svc);
         }
         for (const svc of await scanLaunchdDir({
           dir: path.join(path.sep, "Library", "LaunchDaemons"),
           scope: "system",
+          currentLabel,
         })) {
           push(svc);
         }
@@ -369,10 +321,12 @@ export async function findExtraGatewayServices(
   if (process.platform === "linux") {
     try {
       const home = resolveHomeDir(env);
+      const currentServiceName = resolveGatewaySystemdServiceName(env.UAGENT_PROFILE);
       const userDir = path.join(home, ".config", "systemd", "user");
       for (const svc of await scanSystemdDir({
         dir: userDir,
         scope: "user",
+        currentServiceName,
       })) {
         push(svc);
       }
@@ -385,6 +339,7 @@ export async function findExtraGatewayServices(
           for (const svc of await scanSystemdDir({
             dir,
             scope: "system",
+            currentServiceName,
           })) {
             push(svc);
           }
@@ -400,6 +355,7 @@ export async function findExtraGatewayServices(
     if (!opts.deep) {
       return results;
     }
+    const currentTaskName = resolveGatewayWindowsTaskName(env.UAGENT_PROFILE).toLowerCase();
     const res = await execSchtasks(["/Query", "/FO", "LIST", "/V"]);
     if (res.code !== 0) {
       return results;
@@ -410,7 +366,7 @@ export async function findExtraGatewayServices(
       if (!name) {
         continue;
       }
-      if (isUAGENTGatewayTaskName(name)) {
+      if (name.toLowerCase() === currentTaskName) {
         continue;
       }
       const lowerName = name.toLowerCase();

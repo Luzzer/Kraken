@@ -135,6 +135,38 @@ describe("findExtraGatewayServices (linux / scanSystemdDir) — real filesystem"
       }
     },
   );
+
+  it.skipIf(!isLinux)(
+    "reports a profile-specific uagent gateway service as an extra service for the default profile",
+    async () => {
+      const tmpHome = await fs.mkdtemp(path.join(os.tmpdir(), "uagent-test-"));
+      const systemdDir = path.join(tmpHome, ".config", "systemd", "user");
+      const unitPath = path.join(systemdDir, "uagent-gateway-rebrand-test.service");
+      try {
+        await fs.mkdir(systemdDir, { recursive: true });
+        await fs.writeFile(
+          unitPath,
+          GATEWAY_SERVICE_CONTENTS.replace(
+            "Description=UAGENT Gateway (v2026.3.8)",
+            "Description=UAGENT Gateway (profile: rebrand-test, v2026.3.8)",
+          ),
+        );
+        const result = await findExtraGatewayServices({ HOME: tmpHome });
+        expect(result).toEqual([
+          {
+            platform: "linux",
+            label: "uagent-gateway-rebrand-test.service",
+            detail: `unit: ${unitPath}`,
+            scope: "user",
+            marker: "uagent",
+            legacy: false,
+          },
+        ]);
+      } finally {
+        await fs.rm(tmpHome, { recursive: true, force: true });
+      }
+    },
+  );
 });
 
 describe("findExtraGatewayServices (win32)", () => {
@@ -198,6 +230,34 @@ describe("findExtraGatewayServices (win32)", () => {
         scope: "system",
         marker: "clawdbot",
         legacy: true,
+      },
+    ]);
+  });
+
+  it("reports profile-specific uagent gateway tasks as extra services", async () => {
+    execSchtasksMock.mockResolvedValueOnce({
+      code: 0,
+      stdout: [
+        "TaskName: UAGENT Gateway",
+        "Task To Run: C:\\Program Files\\UAGENT\\uagent.exe gateway run",
+        "",
+        "TaskName: UAGENT Gateway (rebrand-test)",
+        "Task To Run: C:\\Program Files\\UAGENT\\uagent.exe gateway run --profile rebrand-test",
+        "",
+      ].join("\n"),
+      stderr: "",
+    });
+
+    const result = await findExtraGatewayServices({}, { deep: true });
+    expect(result).toEqual([
+      {
+        platform: "win32",
+        label: "UAGENT Gateway (rebrand-test)",
+        detail:
+          "task: UAGENT Gateway (rebrand-test), run: C:\\Program Files\\UAGENT\\uagent.exe gateway run --profile rebrand-test",
+        scope: "system",
+        marker: "uagent",
+        legacy: false,
       },
     ]);
   });

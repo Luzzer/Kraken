@@ -1,3 +1,4 @@
+import net from "node:net";
 import os from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeNetworkInterfacesSnapshot } from "../test-helpers/network-interfaces.js";
@@ -571,6 +572,13 @@ describe("resolveGatewayBindHost", () => {
   });
 
   it("returns 127.0.0.1 for loopback mode", async () => {
+    expect(await resolveGatewayBindHost("loopback")).toBe("127.0.0.1");
+  });
+
+  it("keeps 127.0.0.1 for explicit loopback even when bind probes are unavailable", async () => {
+    vi.spyOn(net, "createServer").mockImplementation(() => {
+      throw new Error("loopback resolution should not probe bind availability");
+    });
     expect(await resolveGatewayBindHost("loopback")).toBe("127.0.0.1");
   });
 

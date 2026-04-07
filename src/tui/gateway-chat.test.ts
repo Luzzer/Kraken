@@ -29,6 +29,19 @@ vi.mock("../gateway/net.js", async () => {
   };
 });
 
+const { loadDeviceAuthTokenMock, loadOrCreateDeviceIdentityMock } = vi.hoisted(() => ({
+  loadDeviceAuthTokenMock: vi.fn(),
+  loadOrCreateDeviceIdentityMock: vi.fn(),
+}));
+
+vi.mock("../infra/device-auth-store.js", () => ({
+  loadDeviceAuthToken: (...args: unknown[]) => loadDeviceAuthTokenMock(...args),
+}));
+
+vi.mock("../infra/device-identity.js", () => ({
+  loadOrCreateDeviceIdentity: (...args: unknown[]) => loadOrCreateDeviceIdentityMock(...args),
+}));
+
 const { GatewayChatClient, resolveGatewayConnection } = await import("./gateway-chat.js");
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -115,6 +128,14 @@ describe("resolveGatewayConnection", () => {
     resolveStateDir.mockReset();
     resolveConfigPath.mockReset();
     resolveGatewayPort.mockReturnValue(18789);
+    loadOrCreateDeviceIdentityMock.mockReset();
+    loadDeviceAuthTokenMock.mockReset();
+    loadOrCreateDeviceIdentityMock.mockReturnValue({
+      deviceId: "test-device",
+      publicKeyPem: "public",
+      privateKeyPem: "private",
+    });
+    loadDeviceAuthTokenMock.mockReturnValue(null);
     resolveStateDir.mockImplementation(
       (env: NodeJS.ProcessEnv) => env.UAGENT_STATE_DIR ?? "/tmp/uagent",
     );
@@ -423,7 +444,18 @@ describe("resolveGatewayConnection", () => {
 });
 
 describe("GatewayChatClient", () => {
-  it("identifies the TUI as a tui client and skips device identity on insecure local ui paths", () => {
+  beforeEach(() => {
+    loadOrCreateDeviceIdentityMock.mockReset();
+    loadDeviceAuthTokenMock.mockReset();
+    loadOrCreateDeviceIdentityMock.mockReturnValue({
+      deviceId: "test-device",
+      publicKeyPem: "public",
+      privateKeyPem: "private",
+    });
+    loadDeviceAuthTokenMock.mockReturnValue(null);
+  });
+
+  it("identifies the TUI as a tui client and omits device identity when no cached device token exists", () => {
     const client = new GatewayChatClient({
       url: "ws://127.0.0.1:18789",
       token: "test-token",
@@ -439,8 +471,53 @@ describe("GatewayChatClient", () => {
         .opts.mode,
     ).toBe("ui");
     expect(
+      (client as unknown as { client: { opts: { scopes?: string[] } } }).client.opts.scopes,
+    ).toEqual(["operator.admin"]);
+    expect(
       (client as unknown as { client: { opts: { deviceIdentity?: unknown } } }).client.opts
         .deviceIdentity,
     ).toBeUndefined();
+  });
+
+  it("omits device identity when the cached device token does not cover admin scope", () => {
+    loadDeviceAuthTokenMock.mockReturnValue({
+      token: "stored-device-token",
+      role: "operator",
+      scopes: ["operator.read"],
+    });
+
+    const client = new GatewayChatClient({
+      url: "ws://127.0.0.1:18789",
+      token: "test-token",
+      allowInsecureLocalOperatorUi: true,
+    });
+
+    expect(
+      (client as unknown as { client: { opts: { deviceIdentity?: unknown } } }).client.opts
+        .deviceIdentity,
+    ).toBeUndefined();
+  });
+
+  it("keeps device identity when a cached device token covers admin scope", () => {
+    loadDeviceAuthTokenMock.mockReturnValue({
+      token: "stored-device-token",
+      role: "operator",
+      scopes: ["operator.admin", "operator.read", "operator.write"],
+    });
+
+    const client = new GatewayChatClient({
+      url: "ws://127.0.0.1:18789",
+      token: "test-token",
+      allowInsecureLocalOperatorUi: true,
+    });
+
+    expect(
+      (client as unknown as { client: { opts: { deviceIdentity?: unknown } } }).client.opts
+        .deviceIdentity,
+    ).toEqual({
+      deviceId: "test-device",
+      publicKeyPem: "public",
+      privateKeyPem: "private",
+    });
   });
 });

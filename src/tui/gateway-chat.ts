@@ -9,6 +9,7 @@ import {
 } from "../gateway/call.js";
 import { GatewayClient } from "../gateway/client.js";
 import { isLoopbackHost } from "../gateway/net.js";
+import { ADMIN_SCOPE, READ_SCOPE, WRITE_SCOPE } from "../gateway/operator-scopes.js";
 import { GATEWAY_CLIENT_CAPS } from "../gateway/protocol/client-info.js";
 import {
   type HelloOk,
@@ -17,6 +18,8 @@ import {
   type SessionsPatchResult,
   type SessionsPatchParams,
 } from "../gateway/protocol/index.js";
+import { loadDeviceAuthToken } from "../infra/device-auth-store.js";
+import { loadOrCreateDeviceIdentity, type DeviceIdentity } from "../infra/device-identity.js";
 import { formatErrorMessage } from "../infra/errors.js";
 import { GATEWAY_CLIENT_MODES, GATEWAY_CLIENT_NAMES } from "../utils/message-channel.js";
 import { VERSION } from "../version.js";
@@ -123,6 +126,41 @@ export type GatewayModelChoice = {
   reasoning?: boolean;
 };
 
+const TUI_CONNECT_SCOPES = [ADMIN_SCOPE] as const;
+
+function hasStoredScopesForRequestedScopes(
+  storedScopes: readonly string[] | undefined,
+  requestedScopes: readonly string[],
+): boolean {
+  if (!Array.isArray(storedScopes) || storedScopes.length === 0) {
+    return false;
+  }
+  const grantedScopes = new Set(storedScopes);
+  if (grantedScopes.has(ADMIN_SCOPE)) {
+    grantedScopes.add(READ_SCOPE);
+    grantedScopes.add(WRITE_SCOPE);
+  }
+  return requestedScopes.every((scope) => grantedScopes.has(scope));
+}
+
+function resolveTuiDeviceIdentity(
+  requestedScopes: readonly string[] = TUI_CONNECT_SCOPES,
+  role = "operator",
+): DeviceIdentity | null {
+  const identity = loadOrCreateDeviceIdentity();
+  const storedAuth = loadDeviceAuthToken({
+    deviceId: identity.deviceId,
+    role,
+  });
+  // Fresh local TUI setups should continue to work with shared gateway auth
+  // without forcing an operator pairing flow. Only reuse device identity when
+  // the cached device token already covers the scopes this TUI session needs.
+  if (!storedAuth?.token) {
+    return null;
+  }
+  return hasStoredScopesForRequestedScopes(storedAuth.scopes, requestedScopes) ? identity : null;
+}
+
 export class GatewayChatClient {
   private client: GatewayClient;
   private readyPromise: Promise<void>;
@@ -151,7 +189,8 @@ export class GatewayChatClient {
       clientVersion: VERSION,
       platform: process.platform,
       mode: GATEWAY_CLIENT_MODES.UI,
-      deviceIdentity: connection.allowInsecureLocalOperatorUi ? null : undefined,
+      scopes: [...TUI_CONNECT_SCOPES],
+      deviceIdentity: resolveTuiDeviceIdentity(TUI_CONNECT_SCOPES),
       caps: [GATEWAY_CLIENT_CAPS.TOOL_EVENTS],
       instanceId: randomUUID(),
       minProtocol: PROTOCOL_VERSION,

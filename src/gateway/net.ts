@@ -297,11 +297,10 @@ export async function resolveGatewayBindHost(
   const mode = bind ?? "loopback";
 
   if (mode === "loopback") {
-    // 127.0.0.1 rarely fails, but handle gracefully
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
-    }
-    return "0.0.0.0"; // extreme fallback
+    // Never widen an explicit loopback bind to a network bind. In restricted
+    // runtimes the probe can fail even though loopback is still the intended
+    // safe target; let the real server bind surface any host-specific error.
+    return "127.0.0.1";
   }
 
   if (mode === "tailnet") {
@@ -309,10 +308,7 @@ export async function resolveGatewayBindHost(
     if (tailnetIP && (await canBindToHost(tailnetIP))) {
       return tailnetIP;
     }
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
-    }
-    return "0.0.0.0";
+    return "127.0.0.1";
   }
 
   if (mode === "lan") {
@@ -338,10 +334,7 @@ export async function resolveGatewayBindHost(
     if (isContainerEnvironment()) {
       return "0.0.0.0";
     }
-    if (await canBindToHost("127.0.0.1")) {
-      return "127.0.0.1";
-    }
-    return "0.0.0.0";
+    return "127.0.0.1";
   }
 
   return "0.0.0.0";

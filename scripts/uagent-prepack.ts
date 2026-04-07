@@ -10,6 +10,10 @@ const requiredPreparedPathGroups = [
   ["dist/control-ui/index.html"],
 ];
 const requiredControlUiAssetPrefix = "dist/control-ui/assets/";
+const sourceExtensionsDir = "extensions";
+const builtExtensionsDir = "dist/extensions";
+const bundledPluginManifestFilename = "uagent.plugin.json";
+const bundledPluginManifestExampleLimit = 5;
 
 type PreparedFileReader = {
   existsSync: typeof existsSync;
@@ -31,6 +35,7 @@ export function shouldSkipPrepack(env = process.env): boolean {
 export function collectPreparedPrepackErrors(
   files: Iterable<string>,
   assetPaths: Iterable<string>,
+  requiredBundledPluginManifestPaths: Iterable<string> = [],
 ): string[] {
   const normalizedFiles = normalizeFiles(files);
   const normalizedAssets = normalizeFiles(assetPaths);
@@ -44,6 +49,20 @@ export function collectPreparedPrepackErrors(
   }
 
   if (!normalizedAssets.values().next().done) {
+    const missingBundledPluginManifestPaths = Array.from(
+      requiredBundledPluginManifestPaths,
+      (path) => path.replace(/\\/g, "/"),
+    ).filter((path) => !normalizedFiles.has(path));
+
+    if (missingBundledPluginManifestPaths.length > 0) {
+      const examples = missingBundledPluginManifestPaths
+        .slice(0, bundledPluginManifestExampleLimit)
+        .join(", ");
+      errors.push(
+        `missing prepared bundled plugin manifests: ${missingBundledPluginManifestPaths.length} (${examples})`,
+      );
+    }
+
     return errors;
   }
 
@@ -54,6 +73,7 @@ export function collectPreparedPrepackErrors(
 function collectPreparedFilePaths(reader: PreparedFileReader = { existsSync, readdirSync }): {
   files: Set<string>;
   assets: string[];
+  bundledPluginManifestPaths: string[];
 } {
   const assets = reader
     .readdirSync("dist/control-ui/assets", { withFileTypes: true })
@@ -70,16 +90,42 @@ function collectPreparedFilePaths(reader: PreparedFileReader = { existsSync, rea
     }
   }
 
+  const bundledPluginManifestPaths = reader
+    .readdirSync(sourceExtensionsDir, { withFileTypes: true })
+    .flatMap((entry) => {
+      if (!entry.isDirectory()) {
+        return [];
+      }
+
+      const sourceManifestPath = `${sourceExtensionsDir}/${entry.name}/${bundledPluginManifestFilename}`;
+      if (!reader.existsSync(sourceManifestPath)) {
+        return [];
+      }
+
+      return [`${builtExtensionsDir}/${entry.name}/${bundledPluginManifestFilename}`];
+    });
+
+  for (const manifestPath of bundledPluginManifestPaths) {
+    if (reader.existsSync(manifestPath)) {
+      files.add(manifestPath);
+    }
+  }
+
   return {
     files,
     assets,
+    bundledPluginManifestPaths,
   };
 }
 
 function ensurePreparedArtifacts(): void {
   try {
     const preparedFiles = collectPreparedFilePaths();
-    const errors = collectPreparedPrepackErrors(preparedFiles.files, preparedFiles.assets);
+    const errors = collectPreparedPrepackErrors(
+      preparedFiles.files,
+      preparedFiles.assets,
+      preparedFiles.bundledPluginManifestPaths,
+    );
     if (errors.length === 0) {
       console.error(
         `prepack: using prepared artifacts from ${skipPrepackPreparedEnv}; skipping rebuild.`,
