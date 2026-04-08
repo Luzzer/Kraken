@@ -416,8 +416,9 @@ export async function finalizeSetupWizard(
   let seededInBackground = false;
   let hatchChoice: "tui" | "web" | "later" | null = null;
   let launchedTui = false;
+  const canOfferHatch = !opts.skipUi && controlUiEnabled && (gatewayProbe.ok || installDaemon);
 
-  if (!opts.skipUi && gatewayProbe.ok) {
+  if (canOfferHatch) {
     if (hasBootstrap) {
       await prompter.note(
         [
@@ -427,6 +428,15 @@ export async function finalizeSetupWizard(
           'We will send: "Wake up, my friend!"',
         ].join("\n"),
         "Start TUI (best option!)",
+      );
+    }
+    if (!gatewayProbe.ok) {
+      await prompter.note(
+        [
+          "Gateway is still warming up.",
+          "You can continue into TUI or Web UI now; connection may take a moment while the service finishes starting.",
+        ].join("\n"),
+        "Gateway",
       );
     }
 

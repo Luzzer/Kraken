@@ -664,6 +664,51 @@ describe("finalizeSetupWizard", () => {
     );
   });
 
+  it("still offers hatch choices while a daemon-installed gateway is warming up", async () => {
+    waitForGatewayHealthy.mockResolvedValueOnce({
+      probe: { ok: false, detail: "gateway closed (1006): " },
+      healthOk: false,
+      attempts: 5,
+    });
+    probeGatewayReachable.mockResolvedValueOnce({
+      ok: false,
+      detail: "gateway closed (1006): ",
+    });
+    const select = vi.fn(async (params: { message: string }) => {
+      if (params.message === "How do you want to hatch your bot?") {
+        return "later";
+      }
+      return "later";
+    });
+    const prompter = buildWizardPrompter({
+      select: select as never,
+      confirm: vi.fn(async () => false),
+    });
+
+    await finalizeSetupWizard(
+      createAdvancedFinalizeArgs({
+        opts: {
+          acceptRisk: true,
+          authChoice: "skip",
+          installDaemon: true,
+          skipHealth: false,
+          skipUi: false,
+        },
+        prompter,
+      }),
+    );
+
+    expect(select).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "How do you want to hatch your bot?",
+      }),
+    );
+    expect(prompter.note).toHaveBeenCalledWith(
+      expect.stringContaining("Gateway is still warming up."),
+      "Gateway",
+    );
+  });
+
   it("does not show a Codex native search summary when web search is globally disabled", async () => {
     const note = vi.fn(async () => {});
     const prompter = buildWizardPrompter({
