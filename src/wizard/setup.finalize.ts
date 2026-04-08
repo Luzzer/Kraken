@@ -48,11 +48,38 @@ type FinalizeOnboardingOptions = {
   runtime: RuntimeEnv;
 };
 
+const INSTALL_DAEMON_HEALTH_DEADLINE_MS = 45_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_DEADLINE_MS = 90_000;
+const INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 10_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 15_000;
+const INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 10_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 90_000;
+
+function resolveInstallDaemonGatewayHealthTiming(): {
+  deadlineMs: number;
+  probeTimeoutMs: number;
+  healthCommandTimeoutMs: number;
+} {
+  if (process.platform === "win32") {
+    return {
+      deadlineMs: WINDOWS_INSTALL_DAEMON_HEALTH_DEADLINE_MS,
+      probeTimeoutMs: WINDOWS_INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS,
+      healthCommandTimeoutMs: WINDOWS_INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS,
+    };
+  }
+  return {
+    deadlineMs: INSTALL_DAEMON_HEALTH_DEADLINE_MS,
+    probeTimeoutMs: INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS,
+    healthCommandTimeoutMs: INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS,
+  };
+}
+
 export async function finalizeSetupWizard(
   options: FinalizeOnboardingOptions,
 ): Promise<{ launchedTui: boolean }> {
   const { flow, opts, baseConfig, nextConfig, settings, prompter, runtime } = options;
   let gatewayProbe: { ok: boolean; detail?: string } = { ok: true };
+  const installDaemonGatewayHealthTiming = resolveInstallDaemonGatewayHealthTiming();
 
   const withWizardProgress = async <T>(
     label: string,
@@ -237,11 +264,22 @@ export async function finalizeSetupWizard(
     gatewayProbe = await waitForGatewayReachable({
       url: probeLinks.wsUrl,
       token: settings.gatewayToken,
-      deadlineMs: 15_000,
+      deadlineMs: opts.installDaemon ? installDaemonGatewayHealthTiming.deadlineMs : 15_000,
+      probeTimeoutMs: opts.installDaemon
+        ? installDaemonGatewayHealthTiming.probeTimeoutMs
+        : undefined,
     });
     if (gatewayProbe.ok) {
       try {
-        await healthCommand({ json: false, timeoutMs: 10_000 }, runtime);
+        await healthCommand(
+          {
+            json: false,
+            timeoutMs: opts.installDaemon
+              ? installDaemonGatewayHealthTiming.healthCommandTimeoutMs
+              : 10_000,
+          },
+          runtime,
+        );
       } catch (err) {
         runtime.error(formatHealthCheckFailure(err));
         await prompter.note(

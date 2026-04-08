@@ -53,6 +53,7 @@ const hasKeyInEnv = vi.hoisted(() =>
 const listConfiguredWebSearchProviders = vi.hoisted(() =>
   vi.fn<(params?: { config?: UAGENTConfig }) => PluginWebSearchProviderEntry[]>(() => []),
 );
+const healthCommand = vi.hoisted(() => vi.fn(async () => {}));
 
 vi.mock("../commands/onboard-helpers.js", () => ({
   detectBrowserOpenSupport: vi.fn(async () => ({ ok: false })),
@@ -85,7 +86,7 @@ vi.mock("../commands/health-format.js", () => ({
 }));
 
 vi.mock("../commands/health.js", () => ({
-  healthCommand: vi.fn(async () => {}),
+  healthCommand,
 }));
 
 vi.mock("../commands/onboard-search.js", () => ({
@@ -555,6 +556,44 @@ describe("finalizeSetupWizard", () => {
       "Gateway",
     );
     expect(prompter.note).not.toHaveBeenCalledWith(expect.any(String), "Dashboard ready");
+  });
+
+  it("uses a longer Windows health timing when daemon install was requested", async () => {
+    let capturedDeadlineMs: number | undefined;
+    let capturedProbeTimeoutMs: number | undefined;
+    waitForGatewayReachable.mockImplementationOnce(
+      async (params: { deadlineMs?: number; probeTimeoutMs?: number }) => {
+        capturedDeadlineMs = params.deadlineMs;
+        capturedProbeTimeoutMs = params.probeTimeoutMs;
+        return { ok: true };
+      },
+    );
+    const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    try {
+      await finalizeSetupWizard(
+        createAdvancedFinalizeArgs({
+          opts: {
+            acceptRisk: true,
+            authChoice: "skip",
+            installDaemon: true,
+            skipHealth: false,
+            skipUi: true,
+          },
+        }),
+      );
+    } finally {
+      platformSpy.mockRestore();
+    }
+
+    expect(capturedDeadlineMs).toBe(90_000);
+    expect(capturedProbeTimeoutMs).toBe(15_000);
+    expect(healthCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        json: false,
+        timeoutMs: 90_000,
+      }),
+      expect.any(Object),
+    );
   });
 
   it("does not show a Codex native search summary when web search is globally disabled", async () => {
