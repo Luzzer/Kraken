@@ -18,7 +18,7 @@ import {
   formatControlUiSshHint,
   openUrl,
   probeGatewayReachable,
-  waitForGatewayReachable,
+  waitForGatewayHealthy,
   resolveControlUiLinks,
 } from "../commands/onboard-helpers.js";
 import type { OnboardOptions } from "../commands/onboard-types.js";
@@ -260,17 +260,17 @@ export async function finalizeSetupWizard(
       customBindHost: nextConfig.gateway?.customBindHost,
       basePath: undefined,
     });
-    // Daemon install/restart can briefly flap the WS; wait a bit so health check doesn't false-fail.
-    gatewayProbe = await waitForGatewayReachable({
+    // Daemon install/restart can briefly flap the WS and RPC; keep retrying before surfacing failure.
+    const gatewayHealth = await waitForGatewayHealthy({
       url: probeLinks.wsUrl,
       token: settings.gatewayToken,
       deadlineMs: opts.installDaemon ? installDaemonGatewayHealthTiming.deadlineMs : 15_000,
       probeTimeoutMs: opts.installDaemon
         ? installDaemonGatewayHealthTiming.probeTimeoutMs
         : undefined,
-    });
-    if (gatewayProbe.ok) {
-      try {
+      retryAttempts: opts.installDaemon ? 5 : 1,
+      retryDelayMs: opts.installDaemon ? 10_000 : 0,
+      runHealthCheck: async () => {
         await healthCommand(
           {
             json: false,
@@ -280,18 +280,20 @@ export async function finalizeSetupWizard(
           },
           runtime,
         );
-      } catch (err) {
-        runtime.error(formatHealthCheckFailure(err));
-        await prompter.note(
-          [
-            "Docs:",
-            "https://docs.uagent.ai/gateway/health",
-            "https://docs.uagent.ai/gateway/troubleshooting",
-          ].join("\n"),
-          "Health check help",
-        );
-      }
-    } else if (installDaemon) {
+      },
+    });
+    gatewayProbe = gatewayHealth.probe;
+    if (gatewayHealth.healthError) {
+      runtime.error(formatHealthCheckFailure(gatewayHealth.healthError));
+      await prompter.note(
+        [
+          "Docs:",
+          "https://docs.uagent.ai/gateway/health",
+          "https://docs.uagent.ai/gateway/troubleshooting",
+        ].join("\n"),
+        "Health check help",
+      );
+    } else if (!gatewayProbe.ok && installDaemon) {
       runtime.error(
         formatHealthCheckFailure(
           new Error(

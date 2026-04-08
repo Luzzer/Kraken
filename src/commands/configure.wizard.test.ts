@@ -22,7 +22,7 @@ const mocks = vi.hoisted(() => {
     note: vi.fn(),
     printWizardHeader: vi.fn(),
     probeGatewayReachable: vi.fn(),
-    waitForGatewayReachable: vi.fn(),
+    waitForGatewayHealthy: vi.fn(),
     resolveControlUiLinks: vi.fn(),
     summarizeExistingConfig: vi.fn(),
     healthCommand: vi.fn(),
@@ -66,7 +66,7 @@ vi.mock("./onboard-helpers.js", () => ({
   probeGatewayReachable: mocks.probeGatewayReachable,
   resolveControlUiLinks: mocks.resolveControlUiLinks,
   summarizeExistingConfig: mocks.summarizeExistingConfig,
-  waitForGatewayReachable: mocks.waitForGatewayReachable,
+  waitForGatewayHealthy: mocks.waitForGatewayHealthy,
 }));
 
 vi.mock("./health.js", () => ({
@@ -162,6 +162,10 @@ function setupBaseWizardState(config: UAGENTConfig = {}) {
   });
   mocks.resolveGatewayPort.mockReturnValue(18789);
   mocks.probeGatewayReachable.mockResolvedValue({ ok: false });
+  mocks.waitForGatewayHealthy.mockImplementation(async (params: { runHealthCheck?: () => Promise<void> }) => {
+    await params.runHealthCheck?.();
+    return { probe: { ok: true }, healthOk: true, attempts: 1 };
+  });
   mocks.resolveControlUiLinks.mockReturnValue({ wsUrl: "ws://127.0.0.1:18789" });
   mocks.summarizeExistingConfig.mockReturnValue("");
   mocks.createClackPrompter.mockReturnValue({
@@ -457,10 +461,22 @@ describe("runConfigureWizard", () => {
     setupBaseWizardState();
     let capturedDeadlineMs: number | undefined;
     let capturedProbeTimeoutMs: number | undefined;
-    mocks.waitForGatewayReachable.mockImplementationOnce(
-      async (params: { deadlineMs?: number; probeTimeoutMs?: number }) => {
+    let capturedRetryAttempts: number | undefined;
+    let capturedRetryDelayMs: number | undefined;
+    mocks.waitForGatewayHealthy.mockImplementationOnce(
+      async (params: {
+        deadlineMs?: number;
+        probeTimeoutMs?: number;
+        retryAttempts?: number;
+        retryDelayMs?: number;
+        runHealthCheck?: () => Promise<void>;
+      }) => {
         capturedDeadlineMs = params.deadlineMs;
         capturedProbeTimeoutMs = params.probeTimeoutMs;
+        capturedRetryAttempts = params.retryAttempts;
+        capturedRetryDelayMs = params.retryDelayMs;
+        await params.runHealthCheck?.();
+        return { probe: { ok: true }, healthOk: true, attempts: 1 };
       },
     );
     const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
@@ -472,6 +488,8 @@ describe("runConfigureWizard", () => {
 
     expect(capturedDeadlineMs).toBe(90_000);
     expect(capturedProbeTimeoutMs).toBe(15_000);
+    expect(capturedRetryAttempts).toBe(5);
+    expect(capturedRetryDelayMs).toBe(10_000);
     expect(mocks.healthCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         json: false,

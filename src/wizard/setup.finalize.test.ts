@@ -8,8 +8,18 @@ const runTui = vi.hoisted(() => vi.fn(async () => {}));
 const probeGatewayReachable = vi.hoisted(() =>
   vi.fn<() => Promise<{ ok: boolean; detail?: string }>>(async () => ({ ok: true })),
 );
-const waitForGatewayReachable = vi.hoisted(() =>
-  vi.fn<() => Promise<{ ok: boolean; detail?: string }>>(async () => ({ ok: true })),
+const waitForGatewayHealthy = vi.hoisted(() =>
+  vi.fn<
+    (params: { runHealthCheck?: () => Promise<void> }) => Promise<{
+      probe: { ok: boolean; detail?: string };
+      healthOk: boolean;
+      healthError?: unknown;
+      attempts: number;
+    }>
+  >(async (params) => {
+    await params.runHealthCheck?.();
+    return { probe: { ok: true }, healthOk: true, attempts: 1 };
+  }),
 );
 const setupWizardShellCompletion = vi.hoisted(() => vi.fn(async () => {}));
 const buildGatewayInstallPlan = vi.hoisted(() =>
@@ -64,7 +74,7 @@ vi.mock("../commands/onboard-helpers.js", () => ({
     httpUrl: "http://127.0.0.1:18789",
     wsUrl: "ws://127.0.0.1:18789",
   })),
-  waitForGatewayReachable,
+  waitForGatewayHealthy,
 }));
 
 vi.mock("../commands/daemon-install-helpers.js", () => ({
@@ -239,8 +249,11 @@ describe("finalizeSetupWizard", () => {
   beforeEach(() => {
     runTui.mockClear();
     probeGatewayReachable.mockClear();
-    waitForGatewayReachable.mockReset();
-    waitForGatewayReachable.mockResolvedValue({ ok: true });
+    waitForGatewayHealthy.mockReset();
+    waitForGatewayHealthy.mockImplementation(async (params: { runHealthCheck?: () => Promise<void> }) => {
+      await params.runHealthCheck?.();
+      return { probe: { ok: true }, healthOk: true, attempts: 1 };
+    });
     setupWizardShellCompletion.mockClear();
     buildGatewayInstallPlan.mockClear();
     gatewayServiceInstall.mockClear();
@@ -515,9 +528,13 @@ describe("finalizeSetupWizard", () => {
   });
 
   it("shows actionable gateway guidance instead of a hard error in no-daemon onboarding", async () => {
-    waitForGatewayReachable.mockResolvedValue({
-      ok: false,
-      detail: "gateway closed (1006 abnormal closure (no close frame)): no close reason",
+    waitForGatewayHealthy.mockResolvedValue({
+      probe: {
+        ok: false,
+        detail: "gateway closed (1006 abnormal closure (no close frame)): no close reason",
+      },
+      healthOk: false,
+      attempts: 1,
     });
     probeGatewayReachable.mockResolvedValue({
       ok: false,
@@ -561,11 +578,22 @@ describe("finalizeSetupWizard", () => {
   it("uses a longer Windows health timing when daemon install was requested", async () => {
     let capturedDeadlineMs: number | undefined;
     let capturedProbeTimeoutMs: number | undefined;
-    waitForGatewayReachable.mockImplementationOnce(
-      async (params: { deadlineMs?: number; probeTimeoutMs?: number }) => {
+    let capturedRetryAttempts: number | undefined;
+    let capturedRetryDelayMs: number | undefined;
+    waitForGatewayHealthy.mockImplementationOnce(
+      async (params: {
+        deadlineMs?: number;
+        probeTimeoutMs?: number;
+        retryAttempts?: number;
+        retryDelayMs?: number;
+        runHealthCheck?: () => Promise<void>;
+      }) => {
         capturedDeadlineMs = params.deadlineMs;
         capturedProbeTimeoutMs = params.probeTimeoutMs;
-        return { ok: true };
+        capturedRetryAttempts = params.retryAttempts;
+        capturedRetryDelayMs = params.retryDelayMs;
+        await params.runHealthCheck?.();
+        return { probe: { ok: true }, healthOk: true, attempts: 1 };
       },
     );
     const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
@@ -587,12 +615,52 @@ describe("finalizeSetupWizard", () => {
 
     expect(capturedDeadlineMs).toBe(90_000);
     expect(capturedProbeTimeoutMs).toBe(15_000);
+    expect(capturedRetryAttempts).toBe(5);
+    expect(capturedRetryDelayMs).toBe(10_000);
     expect(healthCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         json: false,
         timeoutMs: 90_000,
       }),
       expect.any(Object),
+    );
+  });
+
+  it("still offers hatch choices when gateway health RPC flaps but the gateway probe is up", async () => {
+    waitForGatewayHealthy.mockResolvedValueOnce({
+      probe: { ok: true },
+      healthOk: false,
+      healthError: new Error("gateway closed (1006): "),
+      attempts: 5,
+    });
+    const select = vi.fn(async (params: { message: string }) => {
+      if (params.message === "How do you want to hatch your bot?") {
+        return "later";
+      }
+      return "later";
+    });
+    const prompter = buildWizardPrompter({
+      select: select as never,
+      confirm: vi.fn(async () => false),
+    });
+
+    await finalizeSetupWizard(
+      createAdvancedFinalizeArgs({
+        opts: {
+          acceptRisk: true,
+          authChoice: "skip",
+          installDaemon: true,
+          skipHealth: false,
+          skipUi: false,
+        },
+        prompter,
+      }),
+    );
+
+    expect(select).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "How do you want to hatch your bot?",
+      }),
     );
   });
 

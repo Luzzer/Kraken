@@ -300,6 +300,66 @@ export async function waitForGatewayReachable(params: {
   return { ok: false, detail: lastDetail };
 }
 
+export async function waitForGatewayHealthy(params: {
+  url: string;
+  token?: string;
+  password?: string;
+  /** Total time each reachability attempt may spend probing before it is treated as failed. */
+  deadlineMs?: number;
+  /** Per-probe timeout (each probe makes a full gateway hello request). */
+  probeTimeoutMs?: number;
+  /** Delay between probes inside each reachability attempt. */
+  pollMs?: number;
+  /** Additional stabilization attempts after a failed probe or health check. */
+  retryAttempts?: number;
+  /** Delay between stabilization attempts. */
+  retryDelayMs?: number;
+  runHealthCheck: () => Promise<void>;
+}): Promise<{
+  probe: { ok: boolean; detail?: string };
+  healthOk: boolean;
+  healthError?: unknown;
+  attempts: number;
+}> {
+  const retryAttempts = Math.max(1, params.retryAttempts ?? 5);
+  const retryDelayMs = params.retryDelayMs ?? 10_000;
+  let lastProbe: { ok: boolean; detail?: string } = { ok: false };
+  let lastHealthError: unknown;
+
+  for (let attempt = 0; attempt < retryAttempts; attempt += 1) {
+    lastProbe = await waitForGatewayReachable({
+      url: params.url,
+      token: params.token,
+      password: params.password,
+      deadlineMs: params.deadlineMs,
+      probeTimeoutMs: params.probeTimeoutMs,
+      pollMs: params.pollMs,
+    });
+    if (lastProbe.ok) {
+      try {
+        await params.runHealthCheck();
+        return {
+          probe: lastProbe,
+          healthOk: true,
+          attempts: attempt + 1,
+        };
+      } catch (err) {
+        lastHealthError = err;
+      }
+    }
+    if (attempt < retryAttempts - 1) {
+      await sleep(retryDelayMs);
+    }
+  }
+
+  return {
+    probe: lastProbe,
+    healthOk: false,
+    healthError: lastHealthError,
+    attempts: retryAttempts,
+  };
+}
+
 function summarizeError(err: unknown): string {
   let raw = "unknown error";
   if (err instanceof Error) {

@@ -6,6 +6,7 @@ import {
   probeGatewayReachable,
   resolveBrowserOpenCommand,
   resolveControlUiLinks,
+  waitForGatewayHealthy,
   validateGatewayPasswordInput,
 } from "./onboard-helpers.js";
 
@@ -133,6 +134,63 @@ describe("probeGatewayReachable", () => {
       ok: false,
       detail: "connect failed: timeout",
     });
+  });
+});
+
+describe("waitForGatewayHealthy", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("retries health checks after an initial gateway-closed bootstrap flap", async () => {
+    vi.useFakeTimers();
+    mocks.probeGateway.mockClear();
+    mocks.probeGateway
+      .mockResolvedValueOnce({
+        ok: true,
+        url: "ws://127.0.0.1:18789",
+        connectLatencyMs: 42,
+        error: null,
+        close: null,
+        health: null,
+        status: null,
+        presence: null,
+        configSnapshot: null,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        url: "ws://127.0.0.1:18789",
+        connectLatencyMs: 40,
+        error: null,
+        close: null,
+        health: null,
+        status: null,
+        presence: null,
+        configSnapshot: null,
+      });
+    const runHealthCheck = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(new Error("gateway closed (1006): "))
+      .mockResolvedValueOnce(undefined);
+
+    const pending = waitForGatewayHealthy({
+      url: "ws://127.0.0.1:18789",
+      token: "tok_test",
+      deadlineMs: 1,
+      retryAttempts: 2,
+      retryDelayMs: 10_000,
+      runHealthCheck,
+    });
+    await vi.runAllTimersAsync();
+    const result = await pending;
+
+    expect(result).toEqual({
+      probe: { ok: true },
+      healthOk: true,
+      attempts: 2,
+    });
+    expect(runHealthCheck).toHaveBeenCalledTimes(2);
+    expect(mocks.probeGateway).toHaveBeenCalledTimes(2);
   });
 });
 

@@ -40,7 +40,7 @@ import {
   probeGatewayReachable,
   resolveControlUiLinks,
   summarizeExistingConfig,
-  waitForGatewayReachable,
+  waitForGatewayHealthy,
 } from "./onboard-helpers.js";
 import { promptRemoteGatewayConfig } from "./onboard-remote.js";
 import { setupSkills } from "./onboard-skills.js";
@@ -117,8 +117,7 @@ async function runGatewayHealthCheck(params: {
   });
   const token = process.env.UAGENT_GATEWAY_TOKEN ?? configuredToken;
   const password = process.env.UAGENT_GATEWAY_PASSWORD ?? configuredPassword;
-
-  await waitForGatewayReachable({
+  const gatewayHealth = await waitForGatewayHealthy({
     url: wsUrl,
     token,
     password,
@@ -126,20 +125,37 @@ async function runGatewayHealthCheck(params: {
     probeTimeoutMs: params.installDaemon
       ? installDaemonGatewayHealthTiming.probeTimeoutMs
       : undefined,
+    retryAttempts: params.installDaemon ? 5 : 1,
+    retryDelayMs: params.installDaemon ? 10_000 : 0,
+    runHealthCheck: async () => {
+      await healthCommand(
+        {
+          json: false,
+          timeoutMs: params.installDaemon
+            ? installDaemonGatewayHealthTiming.healthCommandTimeoutMs
+            : 10_000,
+        },
+        params.runtime,
+      );
+    },
   });
 
-  try {
-    await healthCommand(
-      {
-        json: false,
-        timeoutMs: params.installDaemon
-          ? installDaemonGatewayHealthTiming.healthCommandTimeoutMs
-          : 10_000,
-      },
-      params.runtime,
+  if (gatewayHealth.healthError) {
+    params.runtime.error(formatHealthCheckFailure(gatewayHealth.healthError));
+    note(
+      [
+        "Docs:",
+        "https://docs.uagent.ai/gateway/health",
+        "https://docs.uagent.ai/gateway/troubleshooting",
+      ].join("\n"),
+      "Health check help",
     );
-  } catch (err) {
-    params.runtime.error(formatHealthCheckFailure(err));
+  } else if (!gatewayHealth.probe.ok) {
+    params.runtime.error(
+      formatHealthCheckFailure(
+        new Error(gatewayHealth.probe.detail ?? `gateway did not become reachable at ${wsUrl}`),
+      ),
+    );
     note(
       [
         "Docs:",
