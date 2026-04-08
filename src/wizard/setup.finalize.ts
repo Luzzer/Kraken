@@ -54,6 +54,8 @@ const INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 10_000;
 const WINDOWS_INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 15_000;
 const INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 10_000;
 const WINDOWS_INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 90_000;
+const INSTALL_DAEMON_HEALTH_RETRY_ATTEMPTS = 5;
+const INSTALL_DAEMON_HEALTH_RETRY_DELAY_MS = 30_000;
 
 function resolveInstallDaemonGatewayHealthTiming(): {
   deadlineMs: number;
@@ -268,8 +270,8 @@ export async function finalizeSetupWizard(
       probeTimeoutMs: opts.installDaemon
         ? installDaemonGatewayHealthTiming.probeTimeoutMs
         : undefined,
-      retryAttempts: opts.installDaemon ? 5 : 1,
-      retryDelayMs: opts.installDaemon ? 10_000 : 0,
+      retryAttempts: opts.installDaemon ? INSTALL_DAEMON_HEALTH_RETRY_ATTEMPTS : 1,
+      retryDelayMs: opts.installDaemon ? INSTALL_DAEMON_HEALTH_RETRY_DELAY_MS : 0,
       runHealthCheck: async () => {
         await healthCommand(
           {

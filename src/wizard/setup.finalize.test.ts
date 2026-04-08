@@ -616,7 +616,7 @@ describe("finalizeSetupWizard", () => {
     expect(capturedDeadlineMs).toBe(90_000);
     expect(capturedProbeTimeoutMs).toBe(15_000);
     expect(capturedRetryAttempts).toBe(5);
-    expect(capturedRetryDelayMs).toBe(10_000);
+    expect(capturedRetryDelayMs).toBe(30_000);
     expect(healthCommand).toHaveBeenCalledWith(
       expect.objectContaining({
         json: false,
