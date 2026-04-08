@@ -47,6 +47,32 @@ import { setupSkills } from "./onboard-skills.js";
 
 type ConfigureSectionChoice = WizardSection | "__continue";
 
+const INSTALL_DAEMON_HEALTH_DEADLINE_MS = 45_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_DEADLINE_MS = 90_000;
+const INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 10_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS = 15_000;
+const INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 10_000;
+const WINDOWS_INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS = 90_000;
+
+function resolveInstallDaemonGatewayHealthTiming(): {
+  deadlineMs: number;
+  probeTimeoutMs: number;
+  healthCommandTimeoutMs: number;
+} {
+  if (process.platform === "win32") {
+    return {
+      deadlineMs: WINDOWS_INSTALL_DAEMON_HEALTH_DEADLINE_MS,
+      probeTimeoutMs: WINDOWS_INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS,
+      healthCommandTimeoutMs: WINDOWS_INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS,
+    };
+  }
+  return {
+    deadlineMs: INSTALL_DAEMON_HEALTH_DEADLINE_MS,
+    probeTimeoutMs: INSTALL_DAEMON_HEALTH_PROBE_TIMEOUT_MS,
+    healthCommandTimeoutMs: INSTALL_DAEMON_HEALTH_COMMAND_TIMEOUT_MS,
+  };
+}
+
 async function resolveGatewaySecretInputForWizard(params: {
   cfg: UAGENTConfig;
   value: unknown;
@@ -68,7 +94,9 @@ async function runGatewayHealthCheck(params: {
   cfg: UAGENTConfig;
   runtime: RuntimeEnv;
   port: number;
+  installDaemon?: boolean;
 }): Promise<void> {
+  const installDaemonGatewayHealthTiming = resolveInstallDaemonGatewayHealthTiming();
   const localLinks = resolveControlUiLinks({
     bind: params.cfg.gateway?.bind ?? "loopback",
     port: params.port,
@@ -94,11 +122,22 @@ async function runGatewayHealthCheck(params: {
     url: wsUrl,
     token,
     password,
-    deadlineMs: 15_000,
+    deadlineMs: params.installDaemon ? installDaemonGatewayHealthTiming.deadlineMs : 15_000,
+    probeTimeoutMs: params.installDaemon
+      ? installDaemonGatewayHealthTiming.probeTimeoutMs
+      : undefined,
   });
 
   try {
-    await healthCommand({ json: false, timeoutMs: 10_000 }, params.runtime);
+    await healthCommand(
+      {
+        json: false,
+        timeoutMs: params.installDaemon
+          ? installDaemonGatewayHealthTiming.healthCommandTimeoutMs
+          : 10_000,
+      },
+      params.runtime,
+    );
   } catch (err) {
     params.runtime.error(formatHealthCheckFailure(err));
     note(
@@ -584,7 +623,12 @@ export async function runConfigureWizard(
       }
 
       if (selected.includes("health")) {
-        await runGatewayHealthCheck({ cfg: nextConfig, runtime, port: gatewayPort });
+        await runGatewayHealthCheck({
+          cfg: nextConfig,
+          runtime,
+          port: gatewayPort,
+          installDaemon: true,
+        });
       }
     } else {
       let ranSection = false;
@@ -652,7 +696,12 @@ export async function runConfigureWizard(
         }
 
         if (choice === "health") {
-          await runGatewayHealthCheck({ cfg: nextConfig, runtime, port: gatewayPort });
+          await runGatewayHealthCheck({
+            cfg: nextConfig,
+            runtime,
+            port: gatewayPort,
+            installDaemon: true,
+          });
         }
       }
 

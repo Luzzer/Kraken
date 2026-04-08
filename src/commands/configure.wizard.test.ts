@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
     waitForGatewayReachable: vi.fn(),
     resolveControlUiLinks: vi.fn(),
     summarizeExistingConfig: vi.fn(),
+    healthCommand: vi.fn(),
   };
 });
 
@@ -69,7 +70,7 @@ vi.mock("./onboard-helpers.js", () => ({
 }));
 
 vi.mock("./health.js", () => ({
-  healthCommand: vi.fn(),
+  healthCommand: mocks.healthCommand,
 }));
 
 vi.mock("./health-format.js", () => ({
@@ -450,5 +451,33 @@ describe("runConfigureWizard", () => {
       }),
     );
     expect(mocks.setupSearch).toHaveBeenCalledOnce();
+  });
+
+  it("uses longer Windows gateway health timing when running the health section", async () => {
+    setupBaseWizardState();
+    let capturedDeadlineMs: number | undefined;
+    let capturedProbeTimeoutMs: number | undefined;
+    mocks.waitForGatewayReachable.mockImplementationOnce(
+      async (params: { deadlineMs?: number; probeTimeoutMs?: number }) => {
+        capturedDeadlineMs = params.deadlineMs;
+        capturedProbeTimeoutMs = params.probeTimeoutMs;
+      },
+    );
+    const platformSpy = vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    try {
+      await runConfigureWizard({ command: "configure", sections: ["health"] }, createRuntime());
+    } finally {
+      platformSpy.mockRestore();
+    }
+
+    expect(capturedDeadlineMs).toBe(90_000);
+    expect(capturedProbeTimeoutMs).toBe(15_000);
+    expect(mocks.healthCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        json: false,
+        timeoutMs: 90_000,
+      }),
+      expect.anything(),
+    );
   });
 });
